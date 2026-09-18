@@ -4,6 +4,34 @@
 > 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义参考 [SemVer](https://semver.org/lang/zh-CN/)。
 > M2-M4 为早期规划实现的里程碑，功能已折叠计入后续里程碑提交，无独立提交记录。
 
+## [M16] 智能中枢（deepseek-harness 集成）- 2026-09-18
+
+### 新增
+- **智能中枢模块**（`jkos_core/harness/`）：把 DeepSeek 官方 agent harness 经官方 Python SDK 以 **sidecar 形态**嵌入 JKOS，承接 Agent 会话、工具编排与子代理
+  - `config.py` — `HarnessConfig.from_env()`，**默认关闭**（`JKOS_HARNESS_ENABLED=false`，保证既有功能零回归），密钥字段提供 `redacted()`/`describe()` 脱敏
+  - `runtime.py` — `SidecarManager`：懒启动、单实例复用、降级标记、幂等关闭；`dsh_bin` 显式传入以绕开 FreeBSD 无 wheel 的 `deepseek-harness-runtime-bin`
+  - `gateway.py` — 会话管理（按租户隔离）+ 事件流；同步 SDK 经 `asyncio.to_thread` 卸载，事件跨线程经 `loop.call_soon_threadsafe` 投递
+  - `routes.py` — `/api/v1/harness/*`：`POST /sessions`(201)、`GET /sessions`、`POST /sessions/{id}/messages`(SSE)、`GET /health`；鉴权复用 `get_tenant_context`（401），配额复用租户令牌桶（429 + Retry-After）
+  - `toolbridge.py` — ToolBridge：生成 harness `dsh-mcp-client` 配置行（`streamable-http` 直连 JKOS `/mcp`）；**缺 token 时拒绝构建**，防止匿名上下文导致全租户工具可见
+  - `proxy.py` — harness Web UI 反代（`/harness/ui/*`），改写 Host 以满足 harness 的 loopback 信任围栏，并对 HTML 绝对资源路径做前缀改写
+- **bootstrap 接线**：`AppComponents.harness` 字段 + 启用时构建 + `close()` 清理 sidecar
+- **配置模板**：`.env.example` 增 `JKOS_HARNESS_*` / `DEEPSEEK_API_KEY` / `JKOS_MCP_TOKEN` 段落
+- **文档**：`CONTEXT.md`（领域词汇表）、`docs/adr/0001-harness-sidecar-intelligent-hub.md`（sidecar 形态决策）
+
+### 📌 部署要点
+- **FreeBSD（0.82）**：官方 runtime wheel 无 FreeBSD 版本，须源码构建并使用 `JKOS_HARNESS_DSH_BIN` 指向 launcher；SDK 用 `pip install --no-deps deepseek-harness-sdk`（或从锁定 checkout 安装）安装
+- **Windows/macOS/Linux**：直接用 SDK 自带 bundled runtime（`dsh_bin` 留空）
+- 凭据由 JKOS 环境注入 harness 子进程，harness 不落密钥文件
+- **harness profile patch 生成**（`jkos_core/harness/toolbridge.py`）：`apply_profile_patch()` 写 `$DSH_HOME/profiles/sdk/cordis.patch.yml`，含两行
+  - `- id: llm-deepseek` + `protocol: chat-completions`：公网 `api.deepseek.com` 只支持 Chat Completions，harness 默认 messages 协议会 404；**patch 行必须带既有行 id 才生效**（无 id 会被静默忽略）
+  - `- id: mcp-jkos`：ToolBridge 行，经 `streamable-http` 回调 JKOS `/mcp`（默认 `http://127.0.0.1:3000/mcp`）
+
+### 🧪 测试与验收
+- 新增 **76 个用例**（config / gateway / routes / toolbridge / proxy）+ 3 个真实 runtime 集成用例（默认 skip，需 `JKOS_HARNESS_INTEGRATION=1`）
+- 回归：本地 py3.14 **865 passed / 3 skipped**；0.82 py3.12 **868 passed / 88%**、py3.11 **865 passed / 3 skipped**
+- **AC 验收**：AC-1（真实 LLM 闭环，`finish_reason=completed`）、AC-2、AC-4、AC-5、AC-6（Web UI 反代端到端 200 + 资源可达）、AC-7、AC-8 通过
+- **AC-3（工具桥接 e2e）未完成**：`dsh-mcp-client` 行写入 patch 后 harness 未建立 MCP 连接（JKOS `/mcp` 收到 0 次请求）。已排除协议不兼容（`/mcp` 的 `initialize` 正常、curl 直连可用），定位在 **profile 依赖闭包/manifest 层**（profile `package.json` 的 `dependencies` 为空，harness 规则要求插件行必须可解析）。详见 plan 的「实施后记」
+
 ## [M15] JKOS 代码层更名落地 - 2026-09-18
 
 ### 📝 变更

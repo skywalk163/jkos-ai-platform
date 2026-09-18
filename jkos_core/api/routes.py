@@ -271,4 +271,13 @@ def create_app(engine: Optional[WorkflowEngine] = None) -> FastAPI:
     # M13: 工具注册 / 发现 / 版本管理 / 市场路由
     from jkos_core.api.tool_routes import register_tool_routes
     register_tool_routes(app, registry=None)
+    # M16: 智能中枢（harness sidecar）—— 默认关闭，由 JKOS_HARNESS_ENABLED 控制
+    from jkos_core.harness.config import HarnessConfig
+    harness_config = HarnessConfig.from_env()
+    if harness_config.enabled:
+        from jkos_core.harness.gateway import get_gateway
+        from jkos_core.harness.proxy import create_ui_proxy_router
+        from jkos_core.harness.routes import create_harness_router
+        app.include_router(create_harness_router(get_gateway(harness_config)))
+        app.include_router(create_ui_proxy_router(harness_config))
     return app

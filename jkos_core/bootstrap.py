@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from jkos_core.audit import AuditLogger
 from jkos_core.auth.dependencies import AuthConfig, JWTManager, configure_auth
@@ -21,9 +21,11 @@ from jkos_core.cache.manager import CacheManager, MemoryCache
 from jkos_core.db import ApprovalTaskRepo, Database, DatabaseConfig, LlmUsageRepo, TenantRepo, WorkflowRepo
 from jkos_core.llm import LLMRouter, build_llm_router
 from jkos_core.mcp.registry import ToolRegistry, get_registry
-from jkos_core.mcp.registry import ToolRegistry, get_registry
 from jkos_core.metrics.collector import DSHMetrics, get_metrics
 from jkos_core.notify.channels import NotificationManager, EmailChannel, WeComChannel, DingTalkChannel
+
+if TYPE_CHECKING:  # 仅类型标注：避免启动即耦合 harness 模块
+    from jkos_core.harness.gateway import HarnessGateway
 
 logger = logging.getLogger("dsh.bootstrap")
 
@@ -42,9 +44,11 @@ class AppComponents:
     cache: Optional[CacheManager] = None  # M3 缓存管理器
     metrics: Optional[DSHMetrics] = None  # M3 指标收集器
     tools: Optional[ToolRegistry] = None  # M13 工具注册表
-    tools: Optional[ToolRegistry] = None  # M13 工具注册表
+    harness: Optional["HarnessGateway"] = None  # M16 智能中枢网关（默认关闭）
 
     def close(self) -> None:
+        if self.harness is not None:
+            self.harness.close()
         self.db.close()
 
 
@@ -96,6 +100,16 @@ def build_components(db_path: Optional[str] = None, init_auth: bool = True) -> A
     # M13: 工具注册表（全局单例，供 MCPServer 与工具路由共享）
     tools = get_registry()
 
+    # M16: 智能中枢（harness sidecar）—— 默认关闭（JKOS_HARNESS_ENABLED）
+    harness = None
+    from jkos_core.harness.config import HarnessConfig
+    from jkos_core.harness.gateway import get_gateway
+
+    harness_config = HarnessConfig.from_env()
+    if harness_config.enabled:
+        harness = get_gateway(harness_config)
+        logger.info("智能中枢已启用：%s", harness_config.describe())
+
     return AppComponents(
         db=db, tenants=TenantRepo(db), workflows=WorkflowRepo(db),
         audit=audit, llm=llm, jwt=jwt_manager,
@@ -104,4 +118,5 @@ def build_components(db_path: Optional[str] = None, init_auth: bool = True) -> A
         cache=cache,
         metrics=metrics,
         tools=tools,
+        harness=harness,
     )
