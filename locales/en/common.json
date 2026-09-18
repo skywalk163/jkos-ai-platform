@@ -1,0 +1,119 @@
+{
+  "app": {
+    "name": "DSH AI Platform",
+    "description": "Enterprise-grade Multi-modal AI Agent Platform",
+    "version": "1.0.0"
+  },
+  "common": {
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "reset": "Reset",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "prev": "Previous",
+    "name": "Name",
+    "description": "Description",
+    "status": "Status",
+    "created_at": "Created At",
+    "updated_at": "Updated At",
+    "language": "Language",
+    "actions": "Actions"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "plugin": {
+    "title": "Plugins",
+    "marketplace": "Plugin Marketplace",
+    "install": "Install Plugin",
+    "uninstall": "Uninstall Plugin",
+    "enable": "Enable Plugin",
+    "disable": "Disable Plugin",
+    "config": "Plugin Config",
+    "category": {
+      "text": "Text Processing",
+      "audio": "Audio Processing",
+      "image": "Image Processing",
+      "video": "Video Processing",
+      "interconnect": "Interconnect",
+      "governance": "Governance"
+    }
+  },
+  "workflow": {
+    "title": "Workflows",
+    "run": "Run Workflow",
+    "history": "History",
+    "instances": "Instances",
+    "create": "Create Workflow",
+    "edit": "Edit Workflow",
+    "delete": "Delete Workflow",
+    "trigger": "Trigger",
+    "parameters": "Parameters"
+  },
+  "error": {
+    "unknown": "Unknown error",
+    "not_found": "Resource not found",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden",
+    "invalid_param": "Invalid parameter",
+    "internal": "Internal server error",
+    "timeout": "Request timeout",
+    "rate_limit": "Rate limit exceeded",
+    "validation": "Validation failed",
+    "plugin_not_found": "Plugin not found",
+    "plugin_install_failed": "Plugin installation failed",
+    "plugin_uninstall_failed": "Plugin uninstallation failed"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirm_password": "Confirm Password",
+    "forgot_password": "Forgot Password",
+    "remember_me": "Remember me",
+    "login_failed": "Login failed",
+    "logout_success": "Logout successful"
+  },
+  "tenant": {
+    "title": "Tenant",
+    "switch": "Switch Tenant",
+    "create": "Create Tenant",
+    "select": "Select Tenant",
+    "no_tenant": "No tenant"
+  },
+  "notification": {
+    "title": "Notifications",
+    "mark_read": "Mark as Read",
+    "clear": "Clear All",
+    "no_notifications": "No notifications"
+  },
+  "marketplace": {
+    "search": "Search plugins",
+    "categories": "Categories",
+    "featured": "Featured",
+    "verified": "Verified",
+    "install": "Install",
+    "uninstall": "Uninstall",
+    "rating": "Rating",
+    "downloads": "Downloads",
+    "version": "Version",
+    "author": "Author",
+    "license": "License",
+    "dependencies": "Dependencies",
+    "no_plugins": "No plugins"
+  }
+}

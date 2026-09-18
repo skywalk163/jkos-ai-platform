@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  dsh-api:
+    build: .
+    container_name: dsh-ai-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DSH_DB_PATH=/app/data/dsh.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dsh-mcp:
+    build: .
+    container_name: dsh-ai-mcp
+    ports:
+      - "3000:3000"
+    environment:
+      - DSH_DB_PATH=/app/data/dsh.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dsh-worker:
+    build: .
+    container_name: dsh-ai-worker
+    environment:
+      - DSH_DB_PATH=/app/data/dsh.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    command: ["python", "server.py", "--worker"]

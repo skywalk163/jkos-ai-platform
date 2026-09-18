@@ -1,0 +1,30 @@
+# DSH Plugin Template
+# 复制此目录并重命名以创建新插件
+# 说明：键为顶层扁平结构，与插件市场 install 写入的清单格式一致；
+#       cmd_create 会改写 id/name/category/visibility 四个字段。
+
+id: "dsh.multimodal.{category}.{name}"
+version: "1.0.0"
+name: "{插件名称}"
+description: "{插件描述}"
+category: "{text|audio|image|video|interconnect|governance}"
+visibility: "custom"
+author: "DSH Team"
+license: "Apache-2.0"
+
+dependencies:
+  - "dsh.runtime >= 2.0.0"
+
+capabilities:
+  - type: "mcp.tool"
+    name: "{tool_name}"
+    description: "{工具描述}"
+    input_schema: "schemas/{tool_name}_input.json"
+    output_schema: "schemas/{tool_name}_output.json"
+
+config:
+  "{config_key}": "{default_value}"
+
+health_check:
+  command: "{health_check_command}"
+  expected_exit_code: 0
