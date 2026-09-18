@@ -1,4 +1,4 @@
-"""插件 CLI 单测：main() 分发与六个 cmd_* 子命令（覆盖 dsh_core/plugin_cli.py L34-302）
+"""插件 CLI 单测：main() 分发与六个 cmd_* 子命令（覆盖 jkos_core/plugin_cli.py L34-302）
 
 覆盖范围：
 - main() 的子命令分发（L101-117）与 __main__ 守卫（L305-306）
@@ -21,10 +21,10 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from dsh_core import plugin_cli
-from dsh_core.plugins.i18n import I18nManager
-from dsh_core.plugins.marketplace import VisibilityDomain
-from dsh_core.plugins.registry import EnhancedPluginRegistry
+from jkos_core import plugin_cli
+from jkos_core.plugins.i18n import I18nManager
+from jkos_core.plugins.marketplace import VisibilityDomain
+from jkos_core.plugins.registry import EnhancedPluginRegistry
 
 
 # ─── 测试替身（对照 plugin_cli.py 各处所需的最小接口） ───

@@ -15,8 +15,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-from dsh_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
-from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
+from jkos_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
+from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
 
 logger = logging.getLogger("dsh.tenants.winery")
 

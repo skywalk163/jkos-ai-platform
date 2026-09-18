@@ -17,8 +17,8 @@ from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Route
 
-from dsh_core.utils import RateLimiter, MultiTenantRateLimiter, rate_limit
-from dsh_core.api import (
+from jkos_core.utils import RateLimiter, MultiTenantRateLimiter, rate_limit
+from jkos_core.api import (
     CSRFMiddleware,
     SecurityConfig,
     SecurityHeadersMiddleware,
@@ -30,7 +30,7 @@ from dsh_core.api import (
     get_cors_middleware_config,
     get_cors_origins,
 )
-from dsh_core.metrics.collector import get_metrics
+from jkos_core.metrics.collector import get_metrics
 
 
 # ─── 速率限制器测试 ───
@@ -300,7 +300,7 @@ class TestMetricsEndpoint:
     def test_metrics_endpoint(self):
         """指标端点返回 Prometheus 格式"""
         from fastapi import FastAPI
-        from dsh_core.metrics.collector import get_metrics as get_global_metrics
+        from jkos_core.metrics.collector import get_metrics as get_global_metrics
         router = create_metrics_router(metrics=get_global_metrics())
         app = FastAPI()
         app.include_router(router)
@@ -312,7 +312,7 @@ class TestMetricsEndpoint:
     def test_metrics_content(self):
         """指标内容包含预定义指标"""
         from fastapi import FastAPI
-        from dsh_core.metrics.collector import get_metrics as get_global_metrics
+        from jkos_core.metrics.collector import get_metrics as get_global_metrics
         router = create_metrics_router(metrics=get_global_metrics())
         app = FastAPI()
         app.include_router(router)

@@ -29,7 +29,7 @@ def main():
 
     # 检查 mcp/server.py 的路由
     print("\n[2] 检查路由...")
-    run(client, "grep -n '@app.get' /data/dsh/code/dsh_core/mcp/server.py | head -10")
+    run(client, "grep -n '@app.get' /data/dsh/code/jkos_core/mcp/server.py | head -10")
     
     # 检查 index.html 是否存在
     print("\n[3] 检查 index.html...")
@@ -37,11 +37,11 @@ def main():
     
     # 检查 FileResponse 导入
     print("\n[4] 检查导入...")
-    run(client, "head -20 /data/dsh/code/dsh_core/mcp/server.py | grep -E 'import|from'")
+    run(client, "head -20 /data/dsh/code/jkos_core/mcp/server.py | grep -E 'import|from'")
     
     # 检查 / 路由的代码
     print("\n[5] 检查 / 路由代码...")
-    run(client, "sed -n '14,25p' /data/dsh/code/dsh_core/mcp/server.py")
+    run(client, "sed -n '14,25p' /data/dsh/code/jkos_core/mcp/server.py")
     
     client.close()
 

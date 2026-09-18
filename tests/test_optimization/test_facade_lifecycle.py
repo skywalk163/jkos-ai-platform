@@ -2,7 +2,7 @@
 
 import pytest
 
-from dsh_core.optimization.base import AutomationResult
+from jkos_core.optimization.base import AutomationResult
 
 
 @pytest.mark.asyncio

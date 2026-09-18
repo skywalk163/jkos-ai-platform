@@ -31,13 +31,13 @@ def main():
     CODE_DIR = "/data/dsh/code"
     VENV_DIR = "/data/dsh/venv"
 
-    # 验证 dsh_core
-    print("\n[2] 验证 dsh_core...")
-    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} {VENV_DIR}/bin/python -c 'import dsh_core; from dsh_core.mcp.server import PREDEFINED_TOOLS; print(\"dsh_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
+    # 验证 jkos_core
+    print("\n[2] 验证 jkos_core...")
+    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} {VENV_DIR}/bin/python -c 'import jkos_core; from jkos_core.mcp.server import PREDEFINED_TOOLS; print(\"jkos_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
     
     # 后台启动 MCP Server
     print("\n[3] 后台启动 MCP Server...")
-    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} nohup {VENV_DIR}/bin/python dsh_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
+    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} nohup {VENV_DIR}/bin/python jkos_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
     
     # 等待启动
     print("\n[4] 等待 3 秒...")
@@ -75,7 +75,7 @@ def main():
     curl http://{HOST}:3000/tools
 
   停止:
-    pkill -f "dsh_core.cli.py mcp"
+    pkill -f "jkos_core.cli.py mcp"
 """)
     
     client.close()

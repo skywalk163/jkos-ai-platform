@@ -31,7 +31,7 @@ def main():
     # 备份 /data/dsh/code 到 /var/dsh/code
     print("\n[2] 备份代码到 /var/dsh/code...")
     run(client, "mkdir -p /var/dsh/code && cp -r /data/dsh/code/* /var/dsh/code/ 2>/dev/null && echo 'done'")
-    run(client, "ls -la /var/dsh/code/dsh_core/ 2>/dev/null | head -5")
+    run(client, "ls -la /var/dsh/code/jkos_core/ 2>/dev/null | head -5")
     
     # 备份启动脚本
     print("\n[3] 备份启动脚本...")
@@ -82,7 +82,7 @@ def main():
     
     # 验证
     print("\n[13] 验证代码...")
-    run(client, "ls -la /data/dsh/code/dsh_core/ 2>/dev/null | head -5")
+    run(client, "ls -la /data/dsh/code/jkos_core/ 2>/dev/null | head -5")
     
     # 最终状态
     print("\n" + "="*60)

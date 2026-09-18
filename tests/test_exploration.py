@@ -9,7 +9,7 @@ import os
 import tempfile
 from types import SimpleNamespace
 
-from dsh_core.exploration import (
+from jkos_core.exploration import (
     ExplorationEngine,
     Experimenter,
     Hypothesis,
@@ -17,9 +17,9 @@ from dsh_core.exploration import (
     SolutionSearcher,
     TaskDecomposer,
 )
-from dsh_core.exploration.base import Result, Solution, SolutionCandidate, SubTask
-from dsh_core.exploration.knowledge_base import keyword_score, tokenize
-from dsh_core.exploration.seed_data import (
+from jkos_core.exploration.base import Result, Solution, SolutionCandidate, SubTask
+from jkos_core.exploration.knowledge_base import keyword_score, tokenize
+from jkos_core.exploration.seed_data import (
     SEED_FAILURES,
     SEED_SOLUTIONS,
     seed_knowledge_base,
@@ -36,7 +36,7 @@ def make_kb(prefix="dsh_kb_"):
 
 
 def make_engine(prefix="dsh_exp_"):
-    """独立知识库 + 隔离仓库根（无 dsh_core/docs，搜索确定且快速）"""
+    """独立知识库 + 隔离仓库根（无 jkos_core/docs，搜索确定且快速）"""
     tmp = tempfile.mkdtemp(prefix=prefix)
     kb = KnowledgeBase(db_path=os.path.join(tmp, "kb.db"))
     repo = os.path.join(tmp, "repo")
@@ -153,7 +153,7 @@ def test_searcher_knowledge_first():
 
 def test_searcher_scans_code_and_docs():
     tmp = tempfile.mkdtemp(prefix="dsh_sea_")
-    code_dir = os.path.join(tmp, "dsh_core", "sales")
+    code_dir = os.path.join(tmp, "jkos_core", "sales")
     doc_dir = os.path.join(tmp, "docs")
     os.makedirs(code_dir)
     os.makedirs(doc_dir)

@@ -1,6 +1,6 @@
-"""tests/test_cli.py — M6 覆盖率提升：dsh_core.cli（CLI 主入口）
+"""tests/test_cli.py — M6 覆盖率提升：jkos_core.cli（CLI 主入口）
 
-目标：dsh_core/cli.py（272 语句，此前 0%）覆盖：
+目标：jkos_core/cli.py（272 语句，此前 0%）覆盖：
   - _build_engine：bootstrap + WorkflowEngine + tenants.dev 工作流注册 / ImportError 回退
   - cmd_all：存储初始化失败、数据库初始化告警、插件加载、MCP Server 启停、中断清理
   - cmd_mcp / cmd_api：uvicorn 惰性加载与 create_app 装配
@@ -14,7 +14,7 @@
   - main：全部子命令路由 + 默认 all + 未知命令
 
 说明：
-  - 函数体内惰性导入（from dsh_core.bootstrap import build_components 等）在调用时
+  - 函数体内惰性导入（from jkos_core.bootstrap import build_components 等）在调用时
     才执行属性查找，因此直接 monkeypatch 对应源模块属性即可生效。
   - cmd_mcp/cmd_api 内部 `import uvicorn`，测试通过向 sys.modules 注入假模块避免
     真实启动服务。
@@ -31,11 +31,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import dsh_core.cli as cli
-from dsh_core import db as db_module
-from dsh_core.auth import dependencies as auth_module
-from dsh_core.bootstrap import build_components as bootstrap_build_components
-from dsh_core.workflow.base import WorkflowError
+import jkos_core.cli as cli
+from jkos_core import db as db_module
+from jkos_core.auth import dependencies as auth_module
+from jkos_core.bootstrap import build_components as bootstrap_build_components
+from jkos_core.workflow.base import WorkflowError
 
 
 # ─── 测试替身 ───
@@ -48,7 +48,7 @@ def get_module(name):
 def make_args(**kw):
     """构造带默认全局选项的 argparse.Namespace"""
     ns = argparse.Namespace(host="0.0.0.0", port=8000, mcp_port=3000,
-                            plugins_dir="/tmp/dsh-plugins",
+                            plugins_dir="/tmp/jkos-plugins",
                             prompt="测试提示词")
     for k, v in kw.items():
         setattr(ns, k, v)
@@ -160,7 +160,7 @@ def install_fake_uvicorn(monkeypatch):
 
 
 def patch_build_components(monkeypatch, comps=None):
-    monkeypatch.setattr(sys.modules["dsh_core.bootstrap"], "build_components",
+    monkeypatch.setattr(sys.modules["jkos_core.bootstrap"], "build_components",
                         MagicMock(return_value=comps or FakeComps()))
     return comps
 
@@ -173,14 +173,14 @@ class TestBuildEngine:
         comps = FakeComps()
         engine = FakeEngine()
         patch_build_components(monkeypatch, comps)
-        monkeypatch.setattr(sys.modules["dsh_core.workflow"], "WorkflowEngine",
+        monkeypatch.setattr(sys.modules["jkos_core.workflow"], "WorkflowEngine",
                             MagicMock(return_value=engine))
 
         result = cli._build_engine()
 
         assert result is engine
-        sys.modules["dsh_core.bootstrap"].build_components.assert_called_once()
-        sys.modules["dsh_core.workflow"].WorkflowEngine.assert_called_once_with(comps)
+        sys.modules["jkos_core.bootstrap"].build_components.assert_called_once()
+        sys.modules["jkos_core.workflow"].WorkflowEngine.assert_called_once_with(comps)
         assert engine.register_node.call_count == 4
         names = {c.args[0] for c in engine.register_node.call_args_list}
         assert names == {"dev_collect_diff", "dev_rule_scan", "dev_llm_review",
@@ -191,7 +191,7 @@ class TestBuildEngine:
         comps = FakeComps()
         engine = FakeEngine()
         patch_build_components(monkeypatch, comps)
-        monkeypatch.setattr(sys.modules["dsh_core.workflow"], "WorkflowEngine",
+        monkeypatch.setattr(sys.modules["jkos_core.workflow"], "WorkflowEngine",
                             MagicMock(return_value=engine))
         monkeypatch.setitem(sys.modules, "tenants.dev.workflows", None)
         caplog.set_level(logging.WARNING, logger="dsh.cli")
@@ -240,7 +240,7 @@ class TestCmdAll:
         cli.init_database.assert_awaited_once_with("cfg")
         assert cli.StorageConfig.from_env()  # sanity: 类方法已替换
         cli.PluginLoader.return_value.load_from_directory.assert_called_once_with(
-            "/tmp/dsh-plugins")
+            "/tmp/jkos-plugins")
         cli.MCPServer.assert_called_once_with(host="0.0.0.0", port=3000)
         mcp.initialize.assert_awaited_once()
         fake_uvicorn.Config.assert_called_once()  # (mcp.app, host=mcp.host, port=mcp.port)
@@ -252,7 +252,7 @@ class TestCmdAll:
         mcp.cleanup.assert_awaited_once()
         assert "✓ 已加载 3 个插件" in caplog.text
         assert "收到中断信号，正在关闭..." in caplog.text
-        assert "DSH AI 中台 已关闭" in caplog.text
+        assert "极快AI操作系统 已关闭" in caplog.text
 
     async def test_cmd_all_storage_initialize_failure(self, monkeypatch):
         """存储初始化失败 → 返回 1 且不再继续"""
@@ -297,7 +297,7 @@ class TestCmdMcp:
     def test_cmd_mcp_starts_uvicorn(self, monkeypatch):
         """mcp 命令：create_app(engine=_build_engine()) + uvicorn.run"""
         fake_uvicorn = install_fake_uvicorn(monkeypatch)
-        mcp_server_module = get_module("dsh_core.mcp.server")
+        mcp_server_module = get_module("jkos_core.mcp.server")
         monkeypatch.setattr(mcp_server_module, "create_app",
                             MagicMock(return_value="app"))
         monkeypatch.setattr(cli, "_build_engine", MagicMock(return_value="ENGINE"))
@@ -314,7 +314,7 @@ class TestCmdApi:
     def test_cmd_api_starts_uvicorn(self, monkeypatch):
         """api 命令（同步）：create_app(engine=_build_engine()) + uvicorn.run"""
         fake_uvicorn = install_fake_uvicorn(monkeypatch)
-        routes_module = get_module("dsh_core.api.routes")
+        routes_module = get_module("jkos_core.api.routes")
         monkeypatch.setattr(routes_module, "create_app",
                             MagicMock(return_value="fastapi-app"))
         monkeypatch.setattr(cli, "_build_engine", MagicMock(return_value="ENGINE"))
@@ -446,7 +446,7 @@ class TestCmdDb:
         rc = cli.cmd_db(make_args(db_action="bogus"))
 
         assert rc == 1
-        assert "用法: dsh-server db <migrate|stats>" in capsys.readouterr().out
+        assert "用法: jkos-server db <migrate|stats>" in capsys.readouterr().out
         assert db.closed
 
 
@@ -525,7 +525,7 @@ class TestCmdWorkflow:
         ])
         engine = engine or FakeEngine()
         patch_build_components(monkeypatch, comps)
-        monkeypatch.setattr(sys.modules["dsh_core.workflow"], "WorkflowEngine",
+        monkeypatch.setattr(sys.modules["jkos_core.workflow"], "WorkflowEngine",
                             MagicMock(return_value=engine))
         return comps, engine
 
@@ -535,7 +535,7 @@ class TestCmdWorkflow:
         rc = cli.cmd_workflow(make_args())
 
         assert rc == 1
-        assert "用法: dsh-server workflow <run|status|resume|list|approve|cancel>" \
+        assert "用法: jkos-server workflow <run|status|resume|list|approve|cancel>" \
             in capsys.readouterr().out
         assert not comps.closed  # 无动作分支在 build_components 之前返回
 
@@ -690,7 +690,7 @@ class TestMain:
     def test_default_command_all(self, monkeypatch):
         """无子命令 → 默认 all"""
         self._patch_run(monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["dsh-server"])
+        monkeypatch.setattr(sys, "argv", ["jkos-server"])
         monkeypatch.setattr(cli, "cmd_all", MagicMock(return_value=7))
 
         rc = cli.main()
@@ -700,14 +700,14 @@ class TestMain:
         assert cli.cmd_all.call_args.args[0].command == "all"
 
     @pytest.mark.parametrize("argv,attr,expected", [
-        (["dsh-server", "mcp", "--port", "3000"], "cmd_mcp", 2),
-        (["dsh-server", "api"], "cmd_api", 3),
-        (["dsh-server", "plugin", "list"], "cmd_plugin", 4),
-        (["dsh-server", "init"], "cmd_init", 5),
-        (["dsh-server", "db", "migrate"], "cmd_db", 6),
-        (["dsh-server", "token", "--tenant", "dev"], "cmd_token", 8),
-        (["dsh-server", "llm"], "cmd_llm", 9),
-        (["dsh-server", "workflow", "run", "hello"], "cmd_workflow", 10),
+        (["jkos-server", "mcp", "--port", "3000"], "cmd_mcp", 2),
+        (["jkos-server", "api"], "cmd_api", 3),
+        (["jkos-server", "plugin", "list"], "cmd_plugin", 4),
+        (["jkos-server", "init"], "cmd_init", 5),
+        (["jkos-server", "db", "migrate"], "cmd_db", 6),
+        (["jkos-server", "token", "--tenant", "dev"], "cmd_token", 8),
+        (["jkos-server", "llm"], "cmd_llm", 9),
+        (["jkos-server", "workflow", "run", "hello"], "cmd_workflow", 10),
     ])
     def test_command_routing(self, monkeypatch, argv, attr, expected):
         self._patch_run(monkeypatch)
@@ -724,7 +724,7 @@ class TestMain:
         （argparse 对未知子命令会在 parse_args 阶段直接 SystemExit(2)，
         因此注入 parse_args 返回值来驱动 main() 的 else 兜底分支）"""
         self._patch_run(monkeypatch)
-        monkeypatch.setattr(sys, "argv", ["dsh-server", "bogus"])
+        monkeypatch.setattr(sys, "argv", ["jkos-server", "bogus"])
         monkeypatch.setattr(
             argparse.ArgumentParser, "parse_args",
             lambda self: argparse.Namespace(

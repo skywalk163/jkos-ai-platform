@@ -1,26 +1,26 @@
 """M14: ToolRegistry 生命周期与版本管理单测
 
-补齐 dsh_core/mcp/registry.py 中「注册 / 注销 / 版本管理 / 全局注册表」一族的缺失行：
+补齐 jkos_core/mcp/registry.py 中「注册 / 注销 / 版本管理 / 全局注册表」一族的缺失行：
 L137 / L162 / L175 / L187-192 / L235-260 / L264-265 / L269-285 / L289-291 / L497。
 
 约定：
 - 每个用例自建独立的 ToolRegistry()，不复用长生命周期实例，避免用例间状态串扰。
 - 唯一触碰全局状态的是 set_registry 用例，由模块级 autouse fixture 负责快照与恢复，
-  避免污染依赖全局注册表的其它模块（如 dsh_core/mcp/server.py）。
+  避免污染依赖全局注册表的其它模块（如 jkos_core/mcp/server.py）。
 """
 
 from datetime import datetime
 
 import pytest
 
-import dsh_core.mcp.registry as registry_mod
-from dsh_core.mcp.registry import (
+import jkos_core.mcp.registry as registry_mod
+from jkos_core.mcp.registry import (
     ToolRegistry,
     ToolVisibility,
     get_registry,
     set_registry,
 )
-from dsh_core.mcp.server import MCPTool
+from jkos_core.mcp.server import MCPTool
 
 
 def _make_tool(name: str, desc: str = "tool") -> MCPTool:

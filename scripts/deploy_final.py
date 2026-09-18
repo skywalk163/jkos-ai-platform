@@ -37,9 +37,9 @@ def main():
     run(client, f"sudo chown -R ai:wheel {DSH_DIR} 2>/dev/null || mkdir -p {DSH_DIR} && sudo chown -R ai:wheel {DSH_DIR}")
     
     # 创建目录
-    for sub in ["code/dsh_core", "code/dsh_core/plugins", "code/dsh_core/plugins/ocr",
-                "code/dsh_core/plugins/_template", "code/dsh_core/mcp", "code/dsh_core/storage",
-                "code/dsh_core/models", "code/dsh_core/api"]:
+    for sub in ["code/jkos_core", "code/jkos_core/plugins", "code/jkos_core/plugins/ocr",
+                "code/jkos_core/plugins/_template", "code/jkos_core/mcp", "code/jkos_core/storage",
+                "code/jkos_core/models", "code/jkos_core/api"]:
         run(client, f"mkdir -p {DSH_DIR}/{sub}")
     
     # 检查目录权限
@@ -59,90 +59,90 @@ def main():
     print("\n[5] 部署代码...")
     
     # __init__.py
-    run(client, f"cat > {CODE_DIR}/dsh_core/__init__.py << 'EOF'\n\"\"\"DSH Core\"\"\"\n__version__ = '0.1.0'\nEOF")
+    run(client, f"cat > {CODE_DIR}/jkos_core/__init__.py << 'EOF'\n\"\"\"DSH Core\"\"\"\n__version__ = '0.1.0'\nEOF")
     
     # cli.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\cli.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\cli.py", "r", encoding="utf-8") as f:
         cli_content = f.read()
     b64 = base64.b64encode(cli_content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/cli.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/cli.py")
     print("  ✓ cli.py")
     
     # plugin_cli.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugin_cli.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugin_cli.py", "r", encoding="utf-8") as f:
         plugin_cli_content = f.read()
     b64 = base64.b64encode(plugin_cli_content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/plugin_cli.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/plugin_cli.py")
     print("  ✓ plugin_cli.py")
     
     # base.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugins\base.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugins\base.py", "r", encoding="utf-8") as f:
         base_content = f.read()
     b64 = base64.b64encode(base_content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/plugins/base.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/plugins/base.py")
     print("  ✓ base.py")
     
     # plugins/__init__.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugins\__init__.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugins\__init__.py", "r", encoding="utf-8") as f:
         plugins_init = f.read()
     b64 = base64.b64encode(plugins_init.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/plugins/__init__.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/plugins/__init__.py")
     print("  ✓ plugins/__init__.py")
     
     # ocr/plugin.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugins\ocr\plugin.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugins\ocr\plugin.py", "r", encoding="utf-8") as f:
         ocr_content = f.read()
     b64 = base64.b64encode(ocr_content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/plugins/ocr/plugin.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/plugins/ocr/plugin.py")
     print("  ✓ ocr/plugin.py")
     
     # _template/plugin.yaml
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugins\_template\plugin.yaml", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugins\_template\plugin.yaml", "r", encoding="utf-8") as f:
         template_content = f.read()
     b64 = base64.b64encode(template_content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/plugins/_template/plugin.yaml")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/plugins/_template/plugin.yaml")
     print("  ✓ _template/plugin.yaml")
     
     # mcp/server.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\mcp\server.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\mcp\server.py", "r", encoding="utf-8") as f:
         mcp_content = f.read()
     b64 = base64.b64encode(mcp_content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/mcp/server.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/mcp/server.py")
     print("  ✓ mcp/server.py")
     
     # storage/manager.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\storage\manager.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\storage\manager.py", "r", encoding="utf-8") as f:
         storage_content = f.read()
     b64 = base64.b64encode(storage_content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/storage/manager.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/storage/manager.py")
     print("  ✓ storage/manager.py")
     
     # storage/__init__.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\storage\__init__.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\storage\__init__.py", "r", encoding="utf-8") as f:
         storage_init = f.read()
     b64 = base64.b64encode(storage_init.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/storage/__init__.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/storage/__init__.py")
     print("  ✓ storage/__init__.py")
     
     # models/__init__.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\models\__init__.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\models\__init__.py", "r", encoding="utf-8") as f:
         models_init = f.read()
     b64 = base64.b64encode(models_init.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/models/__init__.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/models/__init__.py")
     print("  ✓ models/__init__.py")
     
     # api/routes.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\api\routes.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\api\routes.py", "r", encoding="utf-8") as f:
         api_routes = f.read()
     b64 = base64.b64encode(api_routes.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/api/routes.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/api/routes.py")
     print("  ✓ api/routes.py")
     
     # api/__init__.py
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\api\__init__.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\api\__init__.py", "r", encoding="utf-8") as f:
         api_init = f.read()
     b64 = base64.b64encode(api_init.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/api/__init__.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/api/__init__.py")
     print("  ✓ api/__init__.py")
     
     # 设置权限
@@ -151,9 +151,9 @@ def main():
 
     # 验证
     print("\n[6] 验证安装...")
-    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'import dsh_core; print(\"dsh_core OK\")'")
-    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'from dsh_core.mcp.server import PREDEFINED_TOOLS; print(\"MCP tools:\", len(PREDEFINED_TOOLS))'")
-    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'from dsh_core.plugins import PluginRegistry; print(\"PluginRegistry OK\")'")
+    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'import jkos_core; print(\"jkos_core OK\")'")
+    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'from jkos_core.mcp.server import PREDEFINED_TOOLS; print(\"MCP tools:\", len(PREDEFINED_TOOLS))'")
+    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'from jkos_core.plugins import PluginRegistry; print(\"PluginRegistry OK\")'")
 
     # 创建启动脚本
     print("\n[7] 创建启动脚本...")
@@ -164,9 +164,9 @@ export DSH_CODE={CODE_DIR}
 export PYTHONPATH=$DSH_CODE
 cd $DSH_CODE
 case "$1" in
-    mcp) $DSH_VENV/bin/python dsh_core/cli.py mcp --port 3000 ;;
-    api) $DSH_VENV/bin/python dsh_core/cli.py api --port 8000 ;;
-    all) $DSH_VENV/bin/python dsh_core/cli.py all ;;
+    mcp) $DSH_VENV/bin/python jkos_core/cli.py mcp --port 3000 ;;
+    api) $DSH_VENV/bin/python jkos_core/cli.py api --port 8000 ;;
+    all) $DSH_VENV/bin/python jkos_core/cli.py all ;;
     *) echo "用法: $0 {{mcp|api|all}}"; exit 1 ;;
 esac
 '''
@@ -183,7 +183,7 @@ DSH_DIR="{DSH_DIR}"
 DSH_VENV="{VENV_DIR}"
 DSH_CODE="{CODE_DIR}"
 command="/usr/sbin/daemon"
-command_args="-f -r /bin/sh -c \"export DSH_HOME=$DSH_DIR; export DSH_VENV=$DSH_VENV; export DSH_CODE=$DSH_CODE; export PYTHONPATH=$DSH_CODE; cd $DSH_CODE; $DSH_VENV/bin/python dsh_core/cli.py mcp --port 3000\""
+command_args="-f -r /bin/sh -c \"export DSH_HOME=$DSH_DIR; export DSH_VENV=$DSH_VENV; export DSH_CODE=$DSH_CODE; export PYTHONPATH=$DSH_CODE; cd $DSH_CODE; $DSH_VENV/bin/python jkos_core/cli.py mcp --port 3000\""
 load_rc_config $name
 run_rc_command "$1"
 '''

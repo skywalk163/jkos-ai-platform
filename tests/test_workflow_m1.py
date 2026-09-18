@@ -7,12 +7,12 @@ import os
 import tempfile
 from types import SimpleNamespace
 
-from dsh_core.audit import AuditLogger
-from dsh_core.db import ApprovalTaskRepo, Database, DatabaseConfig, TenantRepo, WorkflowRepo
-from dsh_core.llm import build_llm_router
-from dsh_core.workflow import WorkflowEngine, WorkflowError
-from dsh_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
-from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
+from jkos_core.audit import AuditLogger
+from jkos_core.db import ApprovalTaskRepo, Database, DatabaseConfig, TenantRepo, WorkflowRepo
+from jkos_core.llm import build_llm_router
+from jkos_core.workflow import WorkflowEngine, WorkflowError
+from jkos_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
+from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
 from tenants.dev.analyzers.rules import scan_patch, summarize_findings
 from tenants.dev import workflows as dev_workflows
 

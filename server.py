@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DSH AI 中台 - 生产环境启动脚本
+"""极快AI操作系统 - 生产环境启动脚本
 
 用法:
     python server.py              # 启动 API 服务 (默认 0.0.0.0:8000)
@@ -41,7 +41,7 @@ logger = logging.getLogger("dsh.server")
 async def lifespan(app):
     """应用生命周期：启动时初始化，关闭时清理"""
     # ─── 启动 ───
-    logger.info("DSH AI 中台启动中...")
+    logger.info("极快AI操作系统启动中...")
     
     # 加载环境变量
     from dotenv import load_dotenv
@@ -53,8 +53,8 @@ async def lifespan(app):
         logger.warning("未找到 .env 文件，使用系统环境变量")
     
     # 初始化组件
-    from dsh_core.bootstrap import build_components
-    from dsh_core.db import DatabaseConfig
+    from jkos_core.bootstrap import build_components
+    from jkos_core.db import DatabaseConfig
     
     db_path = os.getenv("DSH_DB_PATH", str(PROJECT_ROOT / "data" / "dsh.db"))
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -71,14 +71,14 @@ async def lifespan(app):
     register_winery(comps)
     
     # 注册媒体工作流
-    from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
+    from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
     for code, wf in MEDIA_WORKFLOWS.items():
         WORKFLOW_REGISTRY[code] = wf
     
     logger.info("租户工作流注册完成")
     
     # 启动后台任务
-    from dsh_core.workflow.engine import WorkflowEngine
+    from jkos_core.workflow.engine import WorkflowEngine
     engine = WorkflowEngine(comps)
     
     # 启动超时扫描
@@ -88,14 +88,14 @@ async def lifespan(app):
     app.state.comps = comps
     app.state.engine = engine
     
-    logger.info("DSH AI 中台启动完成")
+    logger.info("极快AI操作系统启动完成")
     
     yield
     
     # ─── 关闭 ───
-    logger.info("DSH AI 中台关闭中...")
+    logger.info("极快AI操作系统关闭中...")
     comps.close()
-    logger.info("DSH AI 中台已关闭")
+    logger.info("极快AI操作系统已关闭")
 
 
 async def sweep_timeouts(engine):
@@ -117,7 +117,7 @@ def create_app():
     from fastapi.middleware.cors import CORSMiddleware
     
     app = FastAPI(
-        title="DSH AI 中台",
+        title="极快AI操作系统",
         description="企业级多模态 AI Agent 中台",
         version="1.0.0",
         lifespan=lifespan,
@@ -133,11 +133,11 @@ def create_app():
     )
     
     # 路由
-    from dsh_core.api.routes import router
+    from jkos_core.api.routes import router
     app.include_router(router, prefix="/api/v1")
     
     # M5: 插件市场路由
-    from dsh_core.api.marketplace_routes import create_plugin_router, create_i18n_router
+    from jkos_core.api.marketplace_routes import create_plugin_router, create_i18n_router
     app.include_router(create_plugin_router(), prefix="/api/v1")
     app.include_router(create_i18n_router(), prefix="/api/v1")
     
@@ -153,7 +153,7 @@ def create_app():
 
 async def run_mcp_server(port: int = 3000):
     """启动 MCP Server"""
-    from dsh_core.mcp.server import run_server
+    from jkos_core.mcp.server import run_server
     logger.info("MCP Server 启动中: %d", port)
     await run_server(port=port)
 
@@ -162,9 +162,9 @@ async def run_mcp_server(port: int = 3000):
 
 async def run_worker():
     """启动后台工作进程"""
-    from dsh_core.bootstrap import build_components
-    from dsh_core.db import DatabaseConfig
-    from dsh_core.workflow.engine import WorkflowEngine
+    from jkos_core.bootstrap import build_components
+    from jkos_core.db import DatabaseConfig
+    from jkos_core.workflow.engine import WorkflowEngine
     
     db_path = os.getenv("DSH_DB_PATH", str(PROJECT_ROOT / "data" / "dsh.db"))
     comps = build_components(db_path=db_path)
@@ -184,7 +184,7 @@ async def run_worker():
 # ─── 主入口 ───
 
 def main():
-    parser = argparse.ArgumentParser(description="DSH AI 中台")
+    parser = argparse.ArgumentParser(description="极快AI操作系统")
     parser.add_argument("--port", type=int, default=8000, help="API 端口")
     parser.add_argument("--mcp-port", type=int, default=3000, help="MCP 端口")
     parser.add_argument("--mcp", action="store_true", help="只启动 MCP Server")

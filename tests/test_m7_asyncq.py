@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from dsh_core.utils.asyncq import AsyncTaskQueue
+from jkos_core.utils.asyncq import AsyncTaskQueue
 
 
 async def test_submit_and_wait_all():

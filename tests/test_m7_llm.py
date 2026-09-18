@@ -4,10 +4,10 @@ import asyncio
 
 import pytest
 
-from dsh_core.cache.manager import CacheManager, LLMCachedResponse
-from dsh_core.llm.base import LLMError, LLMMessage, LLMProvider, LLMResult
-from dsh_core.llm.router import LLMRouter
-from dsh_core.llm.simulated import SimulatedProvider
+from jkos_core.cache.manager import CacheManager, LLMCachedResponse
+from jkos_core.llm.base import LLMError, LLMMessage, LLMProvider, LLMResult
+from jkos_core.llm.router import LLMRouter
+from jkos_core.llm.simulated import SimulatedProvider
 
 
 class _FailingProvider(LLMProvider):

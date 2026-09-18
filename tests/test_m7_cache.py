@@ -4,8 +4,8 @@ import time
 
 import pytest
 
-from dsh_core.cache.manager import MemoryCache
-from dsh_core.cache.multi_layer import BloomFilter, MultiLayerCache
+from jkos_core.cache.manager import MemoryCache
+from jkos_core.cache.multi_layer import BloomFilter, MultiLayerCache
 
 
 def test_bloom_filter_add_and_contains():

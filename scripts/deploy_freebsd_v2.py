@@ -136,25 +136,25 @@ def main():
     step("步骤 5: 部署代码")
     
     # 先创建目录结构
-    for sub in ["dsh_core", "dsh_core/plugins", "dsh_core/plugins/ocr", "dsh_core/plugins/_template",
-                "dsh_core/mcp", "dsh_core/storage", "dsh_core/models", "dsh_core/api"]:
+    for sub in ["jkos_core", "jkos_core/plugins", "jkos_core/plugins/ocr", "jkos_core/plugins/_template",
+                "jkos_core/mcp", "jkos_core/storage", "jkos_core/models", "jkos_core/api"]:
         run_sudo(client, f"mkdir -p {CODE_DIR}/{sub} && chown -R {USER}:wheel {CODE_DIR}", echo=False)
     
     # 定义要上传的文件和内容
     files = {
-        f"{CODE_DIR}/dsh_core/__init__.py": '"""DSH Core"""\n__version__ = "0.1.0"\n',
-        f"{CODE_DIR}/dsh_core/cli.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\cli.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugin_cli.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugin_cli.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugins/__init__.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugins\__init__.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugins/base.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugins\base.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugins/ocr/plugin.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugins\ocr\plugin.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugins/_template/plugin.yaml": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\plugins\_template\plugin.yaml", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/mcp/server.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\mcp\server.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/storage/__init__.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\storage\__init__.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/storage/manager.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\storage\manager.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/models/__init__.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\models\__init__.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/api/__init__.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\api\__init__.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/api/routes.py": open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\api\routes.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/__init__.py": '"""DSH Core"""\n__version__ = "0.1.0"\n',
+        f"{CODE_DIR}/jkos_core/cli.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\cli.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugin_cli.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugin_cli.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugins/__init__.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugins\__init__.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugins/base.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugins\base.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugins/ocr/plugin.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugins\ocr\plugin.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugins/_template/plugin.yaml": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\plugins\_template\plugin.yaml", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/mcp/server.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\mcp\server.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/storage/__init__.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\storage\__init__.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/storage/manager.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\storage\manager.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/models/__init__.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\models\__init__.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/api/__init__.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\api\__init__.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/api/routes.py": open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\api\routes.py", "r", encoding="utf-8").read(),
     }
     
     import base64
@@ -175,16 +175,16 @@ def main():
     
     # 测试 Python 导入
     print("  测试 Python 导入...")
-    test_cmd = 'import dsh_core; print("dsh_core OK")'
+    test_cmd = 'import jkos_core; print("jkos_core OK")'
     status, out, err = run(client, f'cd {CODE_DIR} && {VENV_DIR}/bin/python -c "{test_cmd}"', echo=False)
     if status == 0 and "OK" in out:
-        print("  ✓ dsh_core 导入成功")
+        print("  ✓ jkos_core 导入成功")
     else:
-        print(f"  ✗ dsh_core 导入失败: {err}")
+        print(f"  ✗ jkos_core 导入失败: {err}")
     
     # 测试 MCP 导入
     print("  测试 MCP 导入...")
-    test_cmd2 = 'from dsh_core.mcp.server import PREDEFINED_TOOLS; print("MCP tools:", len(PREDEFINED_TOOLS))'
+    test_cmd2 = 'from jkos_core.mcp.server import PREDEFINED_TOOLS; print("MCP tools:", len(PREDEFINED_TOOLS))'
     status, out, err = run(client, f'cd {CODE_DIR} && {VENV_DIR}/bin/python -c "{test_cmd2}"', echo=False)
     if status == 0:
         print(f"  ✓ {out.strip()}")
@@ -193,7 +193,7 @@ def main():
     
     # 测试插件导入
     print("  测试插件导入...")
-    test_cmd3 = 'from dsh_core.plugins import PluginRegistry; print("PluginRegistry OK")'
+    test_cmd3 = 'from jkos_core.plugins import PluginRegistry; print("PluginRegistry OK")'
     status, out, err = run(client, f'cd {CODE_DIR} && {VENV_DIR}/bin/python -c "{test_cmd3}"', echo=False)
     if status == 0:
         print("  ✓ 插件系统导入成功")
@@ -211,9 +211,9 @@ export DSH_CODE={CODE_DIR}
 export PYTHONPATH=$DSH_CODE
 cd $DSH_CODE
 case "$1" in
-    mcp) $DSH_VENV/bin/python dsh_core/cli.py mcp --port 3000 ;;
-    api) $DSH_VENV/bin/python dsh_core/cli.py api --port 8000 ;;
-    all) $DSH_VENV/bin/python dsh_core/cli.py all ;;
+    mcp) $DSH_VENV/bin/python jkos_core/cli.py mcp --port 3000 ;;
+    api) $DSH_VENV/bin/python jkos_core/cli.py api --port 8000 ;;
+    all) $DSH_VENV/bin/python jkos_core/cli.py all ;;
     *) echo "用法: $0 {{mcp|api|all}}"; exit 1 ;;
 esac
 '''

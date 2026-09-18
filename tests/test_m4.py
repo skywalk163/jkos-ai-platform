@@ -25,11 +25,11 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from dsh_core.db import Database, DatabaseConfig
-from dsh_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
-from dsh_core.workflow.engine import WorkflowEngine
-from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
-from dsh_core.db.repos import WorkflowRepo
+from jkos_core.db import Database, DatabaseConfig
+from jkos_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
+from jkos_core.workflow.engine import WorkflowEngine
+from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
+from jkos_core.db.repos import WorkflowRepo
 from tenants.winery import (
     WINERY_WORKFLOWS,
     BRAND_COMPLIANCE,
@@ -54,13 +54,13 @@ from tenants.winery.adapters.erp import (
     MesAdapter,
     AdapterFactory,
 )
-from dsh_core.db.tenant_schema import (
+from jkos_core.db.tenant_schema import (
     CrossTenantQuery,
     IsolationLevel,
     TenantSchemaConfig,
     TenantSchemaManager,
 )
-from dsh_core.db.postgres import (
+from jkos_core.db.postgres import (
     ConnectionPoolManager,
     DatabaseType,
     MigrationPlan,
@@ -68,7 +68,7 @@ from dsh_core.db.postgres import (
     PostgresConfig,
     PostgresMigrator,
 )
-from dsh_core.bus.nats import (
+from jkos_core.bus.nats import (
     EventBus,
     EventBusFactory,
     EventTypes,
@@ -99,10 +99,10 @@ def db():
 @pytest.fixture
 def engine(db):
     """工作流引擎"""
-    from dsh_core.db.repos import WorkflowRepo, ApprovalTaskRepo
-    from dsh_core.audit import AuditLogger
-    from dsh_core.llm import LLMRouter, build_llm_router
-    from dsh_core.db import TenantRepo
+    from jkos_core.db.repos import WorkflowRepo, ApprovalTaskRepo
+    from jkos_core.audit import AuditLogger
+    from jkos_core.llm import LLMRouter, build_llm_router
+    from jkos_core.db import TenantRepo
     from types import SimpleNamespace
     
     repo = WorkflowRepo(db)
@@ -648,12 +648,12 @@ class TestM46_NatsEventBus:
 
     def test_delivery_guarantee_enum(self):
         """测试投递保证枚举"""
-        from dsh_core.bus.nats import DeliveryGuarantee
+        from jkos_core.bus.nats import DeliveryGuarantee
         assert DeliveryGuarantee.AT_LEAST_ONCE.value == "at_least_once"
 
     def test_event_status_enum(self):
         """测试事件状态枚举"""
-        from dsh_core.bus.nats import EventStatus
+        from jkos_core.bus.nats import EventStatus
         assert EventStatus.PUBLISHED.value == "published"
         assert EventStatus.CONSUMED.value == "consumed"
         assert EventStatus.DEAD_LETTER.value == "dead_letter"
@@ -666,7 +666,7 @@ class TestM46_NatsEventBusCoverage:
 
     @pytest.mark.asyncio
     async def test_event_bus_abstract_publish(self):
-        from dsh_core.bus.nats import Event, EventBus
+        from jkos_core.bus.nats import Event, EventBus
         bus = EventBus()
         event = Event(id="e1", type="T", tenant_id="t1", payload={})
         with pytest.raises(NotImplementedError):
@@ -674,28 +674,28 @@ class TestM46_NatsEventBusCoverage:
 
     @pytest.mark.asyncio
     async def test_event_bus_abstract_subscribe(self):
-        from dsh_core.bus.nats import EventBus
+        from jkos_core.bus.nats import EventBus
         bus = EventBus()
         with pytest.raises(NotImplementedError):
             await bus.subscribe("T", AsyncMock())
 
     @pytest.mark.asyncio
     async def test_event_bus_abstract_unsubscribe(self):
-        from dsh_core.bus.nats import EventBus
+        from jkos_core.bus.nats import EventBus
         bus = EventBus()
         with pytest.raises(NotImplementedError):
             await bus.unsubscribe("s1")
 
     @pytest.mark.asyncio
     async def test_event_bus_abstract_ack(self):
-        from dsh_core.bus.nats import EventBus
+        from jkos_core.bus.nats import EventBus
         bus = EventBus()
         with pytest.raises(NotImplementedError):
             await bus.ack("e1")
 
     @pytest.mark.asyncio
     async def test_event_bus_abstract_nack(self):
-        from dsh_core.bus.nats import EventBus
+        from jkos_core.bus.nats import EventBus
         bus = EventBus()
         with pytest.raises(NotImplementedError):
             await bus.nack("e1")
@@ -746,7 +746,7 @@ class TestM46_NatsEventBusCoverage:
 
     @pytest.mark.asyncio
     async def test_nack_requeue(self):
-        from dsh_core.bus.nats import Event, EventStatus
+        from jkos_core.bus.nats import Event, EventStatus
         bus = NatsEventBus()
         event = Event(id="e1", type="T", tenant_id="t1", payload={})
         bus._event_store[event.id] = event
@@ -757,7 +757,7 @@ class TestM46_NatsEventBusCoverage:
 
     @pytest.mark.asyncio
     async def test_nack_dead_letter(self):
-        from dsh_core.bus.nats import Event, EventStatus
+        from jkos_core.bus.nats import Event, EventStatus
         bus = NatsEventBus()
         event = Event(id="e1", type="T", tenant_id="t1", payload={}, max_retries=2)
         event.retry_count = 1
@@ -770,7 +770,7 @@ class TestM46_NatsEventBusCoverage:
 
     @pytest.mark.asyncio
     async def test_nack_failed(self):
-        from dsh_core.bus.nats import Event, EventStatus
+        from jkos_core.bus.nats import Event, EventStatus
         bus = NatsEventBus()
         event = Event(id="e1", type="T", tenant_id="t1", payload={})
         bus._event_store[event.id] = event
@@ -782,7 +782,7 @@ class TestM46_NatsEventBusCoverage:
 
     @pytest.mark.asyncio
     async def test_handle_event_idempotent(self):
-        from dsh_core.bus.nats import Event
+        from jkos_core.bus.nats import Event
         bus = NatsEventBus()
         handler = AsyncMock()
         await bus.subscribe("T.EVENT", handler)
@@ -793,7 +793,7 @@ class TestM46_NatsEventBusCoverage:
 
     @pytest.mark.asyncio
     async def test_handle_event_success(self):
-        from dsh_core.bus.nats import Event, EventStatus
+        from jkos_core.bus.nats import Event, EventStatus
         bus = NatsEventBus()
         handler = AsyncMock()
         await bus.subscribe("T.EVENT", handler)
@@ -806,7 +806,7 @@ class TestM46_NatsEventBusCoverage:
 
     @pytest.mark.asyncio
     async def test_handle_event_exception_nacks(self):
-        from dsh_core.bus.nats import Event, EventStatus
+        from jkos_core.bus.nats import Event, EventStatus
         bus = NatsEventBus()
         handler = AsyncMock(side_effect=RuntimeError("boom"))
         await bus.subscribe("T.EVENT", handler)
@@ -818,7 +818,7 @@ class TestM46_NatsEventBusCoverage:
 
     @pytest.mark.asyncio
     async def test_handle_event_no_subscription(self):
-        from dsh_core.bus.nats import Event
+        from jkos_core.bus.nats import Event
         bus = NatsEventBus()
         event = Event(id="e1", type="T.UNKNOWN", tenant_id="t1", payload={})
         assert await bus.handle_event(event) is False
@@ -836,7 +836,7 @@ class TestM46_NatsEventBusCoverage:
         await bus.disconnect()
 
     def test_get_dead_letter_events(self):
-        from dsh_core.bus.nats import DeadLetterEvent, Event
+        from jkos_core.bus.nats import DeadLetterEvent, Event
         bus = NatsEventBus()
         event = Event(id="e1", type="T", tenant_id="t1", payload={})
         bus._dead_letter_queue.append(
@@ -847,7 +847,7 @@ class TestM46_NatsEventBusCoverage:
         assert dlqs[0].event is event
 
     def test_retry_dead_letter_hit(self):
-        from dsh_core.bus.nats import DeadLetterEvent, Event, EventStatus
+        from jkos_core.bus.nats import DeadLetterEvent, Event, EventStatus
         bus = NatsEventBus()
         event = Event(id="e1", type="T", tenant_id="t1", payload={})
         event.status = EventStatus.DEAD_LETTER
@@ -865,7 +865,7 @@ class TestM46_NatsEventBusCoverage:
     # ── 工厂 ──
 
     def test_event_bus_factory_get_set_instance(self):
-        from dsh_core.bus.nats import EventBus
+        from jkos_core.bus.nats import EventBus
         EventBusFactory._instance = None
         assert EventBusFactory.get_instance() is None
         bus = EventBus()
@@ -941,10 +941,10 @@ class TestM4_Integration:
 
     def test_winery_workflow_with_traceability(self, db):
         """测试酒厂工作流与追溯集成"""
-        from dsh_core.db.repos import WorkflowRepo, ApprovalTaskRepo
-        from dsh_core.audit import AuditLogger
-        from dsh_core.llm import build_llm_router
-        from dsh_core.db import TenantRepo
+        from jkos_core.db.repos import WorkflowRepo, ApprovalTaskRepo
+        from jkos_core.audit import AuditLogger
+        from jkos_core.llm import build_llm_router
+        from jkos_core.db import TenantRepo
         from types import SimpleNamespace
         
         repo = WorkflowRepo(db)

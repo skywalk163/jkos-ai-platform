@@ -168,9 +168,9 @@ def main():
     
     sftp = client.open_sftp()
     
-    # 上传 dsh_core 模块
-    local_base = r"G:\dswork\AI\dsh-ai-platform\dsh_core"
-    remote_base = f"{code_dir}/dsh_core"
+    # 上传 jkos_core 模块
+    local_base = r"G:\dswork\AI\dsh-ai-platform\jkos_core"
+    remote_base = f"{code_dir}/jkos_core"
     
     # 先设置目录权限
     run_sudo(client, f"mkdir -p {remote_base} && chown -R {USER}:wheel {code_dir} {dsh_dir}", echo=False)
@@ -300,16 +300,16 @@ def main():
     
     # 测试 Python 导入
     print("  测试 Python 导入...")
-    test_cmd3 = "import dsh_core; print('dsh_core OK')"
+    test_cmd3 = "import jkos_core; print('jkos_core OK')"
     status, out, err = run(client, f'cd {code_dir} && {venv_dir}/bin/python -c "{test_cmd3}"', echo=False)
     if status == 0 and "OK" in out:
-        print("  ✓ dsh_core 导入成功")
+        print("  ✓ jkos_core 导入成功")
     else:
-        print(f"  ✗ dsh_core 导入失败: {err}")
+        print(f"  ✗ jkos_core 导入失败: {err}")
     
     # 测试 MCP 导入
     print("  测试 MCP 导入...")
-    test_cmd = "from dsh_core.mcp.server import PREDEFINED_TOOLS; print('MCP tools:', len(PREDEFINED_TOOLS))"
+    test_cmd = "from jkos_core.mcp.server import PREDEFINED_TOOLS; print('MCP tools:', len(PREDEFINED_TOOLS))"
     status, out, err = run(client, f'cd {code_dir} && {venv_dir}/bin/python -c "{test_cmd}"', echo=False)
     if status == 0:
         print(f"  ✓ {out.strip()}")
@@ -318,7 +318,7 @@ def main():
     
     # 测试插件导入
     print("  测试插件导入...")
-    test_cmd2 = "from dsh_core.plugins import PluginRegistry; print('PluginRegistry OK')"
+    test_cmd2 = "from jkos_core.plugins import PluginRegistry; print('PluginRegistry OK')"
     status, out, err = run(client, f'cd {code_dir} && {venv_dir}/bin/python -c "{test_cmd2}"', echo=False)
     if status == 0:
         print(f"  ✓ 插件系统导入成功")
@@ -343,15 +343,15 @@ cd $DSH_CODE
 case "$1" in
     mcp)
         echo "启动 MCP Server..."
-        $DSH_VENV/bin/python dsh_core/cli.py mcp --port 3000
+        $DSH_VENV/bin/python jkos_core/cli.py mcp --port 3000
         ;;
     api)
         echo "启动 API 服务..."
-        $DSH_VENV/bin/python dsh_core/cli.py api --port 8000
+        $DSH_VENV/bin/python jkos_core/cli.py api --port 8000
         ;;
     all)
         echo "启动所有服务..."
-        $DSH_VENV/bin/python dsh_core/cli.py all
+        $DSH_VENV/bin/python jkos_core/cli.py all
         ;;
     *)
         echo "用法: $0 {{mcp|api|all}}"

@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from dsh_core.mcp.server import (
+from jkos_core.mcp.server import (
     MCPServer,
     MCPTool,
     MCPToolCall,

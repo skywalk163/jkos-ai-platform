@@ -55,9 +55,9 @@ def main():
     print("\n[7] 验证安装...")
     run(client, "/usr/local/bin/python3.11 -c 'import pydantic; import httpx; print(\"pydantic:\", pydantic.__version__, \"httpx:\", httpx.__version__)'")
     
-    # 验证 dsh_core
-    print("\n[8] 验证 dsh_core...")
-    run(client, f"cd {DSH_DIR}/code && PYTHONPATH=/data/dsh/code /usr/local/bin/python3.11 -c 'import dsh_core; from dsh_core.mcp.server import PREDEFINED_TOOLS; print(\"dsh_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
+    # 验证 jkos_core
+    print("\n[8] 验证 jkos_core...")
+    run(client, f"cd {DSH_DIR}/code && PYTHONPATH=/data/dsh/code /usr/local/bin/python3.11 -c 'import jkos_core; from jkos_core.mcp.server import PREDEFINED_TOOLS; print(\"jkos_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
     
     # 创建使用系统 python 的启动脚本
     print("\n[9] 创建启动脚本...")
@@ -68,9 +68,9 @@ export PYTHONPATH=$DSH_CODE
 export TMPDIR={DSH_DIR}/tmp
 cd $DSH_CODE
 case "$1" in
-    mcp) /usr/local/bin/python3.11 dsh_core/cli.py mcp --port 3000 ;;
-    api) /usr/local/bin/python3.11 dsh_core/cli.py api --port 8000 ;;
-    all) /usr/local/bin/python3.11 dsh_core/cli.py all ;;
+    mcp) /usr/local/bin/python3.11 jkos_core/cli.py mcp --port 3000 ;;
+    api) /usr/local/bin/python3.11 jkos_core/cli.py api --port 8000 ;;
+    all) /usr/local/bin/python3.11 jkos_core/cli.py all ;;
     *) echo "用法: $0 {{mcp|api|all}}"; exit 1 ;;
 esac
 '''
@@ -81,7 +81,7 @@ esac
     
     # 测试启动
     print("\n[10] 测试启动 MCP Server (3秒)...")
-    run(client, f"cd {DSH_DIR}/code && TMPDIR={DSH_DIR}/tmp timeout 3 /usr/local/bin/python3.11 dsh_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
+    run(client, f"cd {DSH_DIR}/code && TMPDIR={DSH_DIR}/tmp timeout 3 /usr/local/bin/python3.11 jkos_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
     
     # 检查端口
     print("\n[11] 检查端口...")

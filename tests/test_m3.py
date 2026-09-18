@@ -10,11 +10,11 @@ from types import SimpleNamespace
 
 import httpx
 
-from dsh_core.bootstrap import build_components
-from dsh_core.cache.manager import CacheBackend, CacheManager, LLMCachedResponse, MemoryCache, RedisCache
-from dsh_core.llm import DeepSeekProvider, OpenAIProvider, build_llm_router
-from dsh_core.metrics.collector import DSHMetrics, Metric, get_metrics
-from dsh_core.notify.channels import (
+from jkos_core.bootstrap import build_components
+from jkos_core.cache.manager import CacheBackend, CacheManager, LLMCachedResponse, MemoryCache, RedisCache
+from jkos_core.llm import DeepSeekProvider, OpenAIProvider, build_llm_router
+from jkos_core.metrics.collector import DSHMetrics, Metric, get_metrics
+from jkos_core.notify.channels import (
     DingTalkChannel,
     EmailChannel,
     NotificationChannel,
@@ -147,7 +147,7 @@ def test_cache_manager_default_backend():
 
 def test_counter_metric():
     """计数器指标"""
-    from dsh_core.metrics.collector import Counter
+    from jkos_core.metrics.collector import Counter
 
     counter = Counter("test_counter", "测试计数器", ["label1"])
     counter.inc({"label1": "value1"})
@@ -160,7 +160,7 @@ def test_counter_metric():
 
 def test_histogram_metric():
     """直方图指标"""
-    from dsh_core.metrics.collector import Histogram
+    from jkos_core.metrics.collector import Histogram
 
     histogram = Histogram("test_histogram", "测试直方图")
     histogram.observe(1.0)
@@ -172,7 +172,7 @@ def test_histogram_metric():
 
 def test_metrics_collector():
     """指标收集器"""
-    from dsh_core.metrics.collector import MetricsCollector
+    from jkos_core.metrics.collector import MetricsCollector
 
     collector = MetricsCollector()
     counter = collector.register_counter("requests_total", "请求总数", ["method"])
@@ -231,9 +231,9 @@ def test_build_components_integration():
 
 def test_metrics_in_workflow():
     """指标集成：工作流执行时记录指标"""
-    from dsh_core.workflow import WorkflowEngine
-    from dsh_core.workflow.base import NodeSpec, WorkflowDef
-    from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
+    from jkos_core.workflow import WorkflowEngine
+    from jkos_core.workflow.base import NodeSpec, WorkflowDef
+    from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
 
     # 创建简单工作流
     async def echo_node(ctx):
@@ -395,7 +395,7 @@ def test_redis_cache_init():
 def test_redis_cache_connection_live(monkeypatch):
     """Redis 缓存：连接成功路径（aioredis.from_url 被模拟）"""
     fake = _FakeRedisClient()
-    monkeypatch.setattr("dsh_core.cache.manager.aioredis",
+    monkeypatch.setattr("jkos_core.cache.manager.aioredis",
                         SimpleNamespace(from_url=lambda url, **kw: fake))
     cache = RedisCache()
     # 首次调用建立连接（from_url + ping），之后复用客户端
@@ -412,7 +412,7 @@ def test_redis_cache_connection_live(monkeypatch):
 def test_redis_cache_connection_failure(monkeypatch):
     """Redis 缓存：连接失败路径（ping 抛异常 → 自动降级）"""
     fake = _FakeRedisClient(fail_connect=True)
-    monkeypatch.setattr("dsh_core.cache.manager.aioredis",
+    monkeypatch.setattr("jkos_core.cache.manager.aioredis",
                         SimpleNamespace(from_url=lambda url, **kw: fake))
     cache = RedisCache()
     # 连接异常 → 降级返回 None，客户端保持未连接（后续调用会重试）
@@ -570,7 +570,7 @@ def test_metric_base_class():
 
 def test_counter_name_and_no_labels_prometheus():
     """计数器：name 访问器 + 无标签 Prometheus 输出"""
-    from dsh_core.metrics.collector import Counter, MetricsCollector
+    from jkos_core.metrics.collector import Counter, MetricsCollector
 
     collector = MetricsCollector()
     counter = collector.register_counter("empty_counter", "无标签计数器")
@@ -588,7 +588,7 @@ def test_counter_name_and_no_labels_prometheus():
 
 def test_histogram_name_and_no_labels_prometheus():
     """直方图：name 访问器 + 无标签 Prometheus 输出"""
-    from dsh_core.metrics.collector import Histogram, MetricsCollector
+    from jkos_core.metrics.collector import Histogram, MetricsCollector
 
     histogram = Histogram("empty_hist", "无标签直方图")
     assert histogram.name() == "empty_hist"

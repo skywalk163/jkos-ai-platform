@@ -1,15 +1,15 @@
 """认证模块单元测试（任务 0.5）— 纯 assert，兼容 pytest 与 m0_selftest 直跑"""
 import time
 
-from dsh_core.auth import jwt as jwt_lib
-from dsh_core.auth.context import (
+from jkos_core.auth import jwt as jwt_lib
+from jkos_core.auth.context import (
     PermissionDenied,
     TenantContext,
     current_context,
     reset_context,
     set_context,
 )
-from dsh_core.auth.dependencies import AuthConfig, JWTManager
+from jkos_core.auth.dependencies import AuthConfig, JWTManager
 
 SECRET = "unit-test-secret-0123456789"
 

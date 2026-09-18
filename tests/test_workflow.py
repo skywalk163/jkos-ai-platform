@@ -4,10 +4,10 @@ import os
 import tempfile
 from types import SimpleNamespace
 
-from dsh_core.audit import AuditLogger
-from dsh_core.db import Database, DatabaseConfig, TenantRepo, WorkflowRepo
-from dsh_core.llm import build_llm_router
-from dsh_core.workflow import WorkflowEngine, WorkflowError, get_workflow
+from jkos_core.audit import AuditLogger
+from jkos_core.db import Database, DatabaseConfig, TenantRepo, WorkflowRepo
+from jkos_core.llm import build_llm_router
+from jkos_core.workflow import WorkflowEngine, WorkflowError, get_workflow
 
 
 def make_engine():

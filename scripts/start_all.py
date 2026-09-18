@@ -29,7 +29,7 @@ def main():
 
     # 检查 mcp/server.py 是否有静态文件路由
     print("\n[2] 检查 mcp/server.py...")
-    run(client, "grep -n 'FileResponse\|@app.get(\"/\")' /data/dsh/code/dsh_core/mcp/server.py 2>/dev/null || echo 'Not found'")
+    run(client, "grep -n 'FileResponse\|@app.get(\"/\")' /data/dsh/code/jkos_core/mcp/server.py 2>/dev/null || echo 'Not found'")
     
     # 检查是否有进程在运行
     print("\n[3] 检查运行中的进程...")
@@ -37,7 +37,7 @@ def main():
     
     # 启动 MCP Server
     print("\n[4] 启动 MCP Server...")
-    run(client, "cd /data/dsh/code && PYTHONPATH=/data/dsh/code nohup /data/dsh/venv/bin/python dsh_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
+    run(client, "cd /data/dsh/code && PYTHONPATH=/data/dsh/code nohup /data/dsh/venv/bin/python jkos_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
     
     # 等待启动
     print("\n[5] 等待 3 秒...")

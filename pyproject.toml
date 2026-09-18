@@ -1,5 +1,5 @@
 [project]
-name = "dsh-ai-platform"
+name = "jkos-ai-platform"
 version = "0.1.0"
 description = "极快AI操作系统 (JKOS, Jikuai AI OS) - 基于 FreeBSD + deepseek-harness 的企业级 AI 服务操作系统"
 requires-python = ">=3.11"
@@ -29,8 +29,8 @@ test = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0", "pytest-cov>=4.1.0", "respx>=
 dev = ["ruff>=0.3.0", "mypy>=1.8.0", "pre-commit>=3.7.0"]
 
 [project.scripts]
-dsh-server = "dsh_core.cli:main"
-dsh-plugin = "dsh_core.plugin_cli:main"
+jkos-server = "jkos_core.cli:main"
+jkos-plugin = "jkos_core.plugin_cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -49,10 +49,10 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --cov=dsh_core --cov-report=term-missing"
+addopts = "-v --tb=short --cov=jkos_core --cov-report=term-missing"
 
 [tool.coverage.run]
-source = ["dsh_core"]
+source = ["jkos_core"]
 omit = ["*/tests/*", "*/__pycache__/*"]
 
 [tool.mypy]

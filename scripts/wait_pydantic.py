@@ -52,13 +52,13 @@ def main():
         print("  ! pydantic 编译超时，尝试安装 pydantic v1...")
         run(client, f"{VENV_DIR}/bin/pip install --no-cache-dir 'pydantic<2.0' 2>&1 | tail -5")
     
-    # 验证 dsh_core
-    print("\n[5] 验证 dsh_core...")
-    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'import dsh_core; from dsh_core.mcp.server import PREDEFINED_TOOLS; print(\"dsh_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
+    # 验证 jkos_core
+    print("\n[5] 验证 jkos_core...")
+    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'import jkos_core; from jkos_core.mcp.server import PREDEFINED_TOOLS; print(\"jkos_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
     
     # 测试启动
     print("\n[6] 测试启动 MCP Server (3秒)...")
-    run(client, f"cd {CODE_DIR} && timeout 3 {VENV_DIR}/bin/python dsh_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
+    run(client, f"cd {CODE_DIR} && timeout 3 {VENV_DIR}/bin/python jkos_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
     
     # 检查端口
     print("\n[7] 检查端口...")

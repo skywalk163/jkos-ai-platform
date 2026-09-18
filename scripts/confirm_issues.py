@@ -45,7 +45,7 @@ def main():
     
     # 检查 _execute_tool 方法
     print("\n[6] 检查 _execute_tool 方法...")
-    run(client, "grep -A 10 'async def _execute_tool' /data/dsh/code/dsh_core/mcp/server.py")
+    run(client, "grep -A 10 'async def _execute_tool' /data/dsh/code/jkos_core/mcp/server.py")
     
     client.close()
 

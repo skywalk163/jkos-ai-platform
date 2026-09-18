@@ -2,7 +2,7 @@
 
 import pytest
 
-from dsh_core.optimization.base import Process, ProcessStep
+from jkos_core.optimization.base import Process, ProcessStep
 
 
 @pytest.mark.asyncio

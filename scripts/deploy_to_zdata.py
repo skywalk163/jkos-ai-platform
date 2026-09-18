@@ -44,9 +44,9 @@ def main():
     # ─── 步骤 1: 创建目录结构 ───
     step("步骤 1: 创建目录结构")
     
-    for sub in ["code", "code/dsh_core", "code/dsh_core/plugins", "code/dsh_core/plugins/ocr",
-                "code/dsh_core/plugins/_template", "code/dsh_core/mcp", "code/dsh_core/storage",
-                "code/dsh_core/models", "code/dsh_core/api", "plugins", "logs", "cache", "data", "tmp"]:
+    for sub in ["code", "code/jkos_core", "code/jkos_core/plugins", "code/jkos_core/plugins/ocr",
+                "code/jkos_core/plugins/_template", "code/jkos_core/mcp", "code/jkos_core/storage",
+                "code/jkos_core/models", "code/jkos_core/api", "plugins", "logs", "cache", "data", "tmp"]:
         run_sudo(client, f"mkdir -p {DSH_DIR}/{sub} && chown -R ai:wheel {DSH_DIR}/{sub}", echo=False)
     print(f"  目录结构已创建: {DSH_DIR}")
 
@@ -82,22 +82,22 @@ def main():
     step("步骤 3: 部署代码")
     
     # 读取本地文件
-    local_base = r"G:\dswork\AI\dsh-ai-platform\dsh_core"
+    local_base = r"G:\dswork\AI\dsh-ai-platform\jkos_core"
     
     files = {
-        f"{CODE_DIR}/dsh_core/__init__.py": '"""DSH Core"""\n__version__ = "0.1.0"\n',
-        f"{CODE_DIR}/dsh_core/cli.py": open(f"{local_base}/cli.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugin_cli.py": open(f"{local_base}/plugin_cli.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugins/__init__.py": open(f"{local_base}/plugins/__init__.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugins/base.py": open(f"{local_base}/plugins/base.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugins/ocr/plugin.py": open(f"{local_base}/plugins/ocr/plugin.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/plugins/_template/plugin.yaml": open(f"{local_base}/plugins/_template/plugin.yaml", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/mcp/server.py": open(f"{local_base}/mcp/server.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/storage/__init__.py": open(f"{local_base}/storage/__init__.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/storage/manager.py": open(f"{local_base}/storage/manager.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/models/__init__.py": open(f"{local_base}/models/__init__.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/api/__init__.py": open(f"{local_base}/api/__init__.py", "r", encoding="utf-8").read(),
-        f"{CODE_DIR}/dsh_core/api/routes.py": open(f"{local_base}/api/routes.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/__init__.py": '"""DSH Core"""\n__version__ = "0.1.0"\n',
+        f"{CODE_DIR}/jkos_core/cli.py": open(f"{local_base}/cli.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugin_cli.py": open(f"{local_base}/plugin_cli.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugins/__init__.py": open(f"{local_base}/plugins/__init__.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugins/base.py": open(f"{local_base}/plugins/base.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugins/ocr/plugin.py": open(f"{local_base}/plugins/ocr/plugin.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/plugins/_template/plugin.yaml": open(f"{local_base}/plugins/_template/plugin.yaml", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/mcp/server.py": open(f"{local_base}/mcp/server.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/storage/__init__.py": open(f"{local_base}/storage/__init__.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/storage/manager.py": open(f"{local_base}/storage/manager.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/models/__init__.py": open(f"{local_base}/models/__init__.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/api/__init__.py": open(f"{local_base}/api/__init__.py", "r", encoding="utf-8").read(),
+        f"{CODE_DIR}/jkos_core/api/routes.py": open(f"{local_base}/api/routes.py", "r", encoding="utf-8").read(),
     }
     
     for remote_path, content in files.items():
@@ -114,21 +114,21 @@ def main():
     step("步骤 4: 验证安装")
     
     print("  测试 Python 导入...")
-    status, out, err = run(client, f'cd {CODE_DIR} && {VENV_DIR}/bin/python -c "import dsh_core; print(\"dsh_core OK\")"', echo=False)
+    status, out, err = run(client, f'cd {CODE_DIR} && {VENV_DIR}/bin/python -c "import jkos_core; print(\"jkos_core OK\")"', echo=False)
     if status == 0 and "OK" in out:
-        print("  ✓ dsh_core 导入成功")
+        print("  ✓ jkos_core 导入成功")
     else:
-        print(f"  ✗ dsh_core 导入失败: {err}")
+        print(f"  ✗ jkos_core 导入失败: {err}")
     
     print("  测试 MCP 导入...")
-    status, out, err = run(client, f'cd {CODE_DIR} && {VENV_DIR}/bin/python -c "from dsh_core.mcp.server import PREDEFINED_TOOLS; print(\"MCP tools:\", len(PREDEFINED_TOOLS))"', echo=False)
+    status, out, err = run(client, f'cd {CODE_DIR} && {VENV_DIR}/bin/python -c "from jkos_core.mcp.server import PREDEFINED_TOOLS; print(\"MCP tools:\", len(PREDEFINED_TOOLS))"', echo=False)
     if status == 0:
         print(f"  ✓ {out.strip()}")
     else:
         print(f"  ✗ MCP 导入失败: {err}")
     
     print("  测试插件导入...")
-    status, out, err = run(client, f'cd {CODE_DIR} && {VENV_DIR}/bin/python -c "from dsh_core.plugins import PluginRegistry; print(\"PluginRegistry OK\")"', echo=False)
+    status, out, err = run(client, f'cd {CODE_DIR} && {VENV_DIR}/bin/python -c "from jkos_core.plugins import PluginRegistry; print(\"PluginRegistry OK\")"', echo=False)
     if status == 0:
         print("  ✓ 插件系统导入成功")
     else:
@@ -145,9 +145,9 @@ export DSH_CODE={CODE_DIR}
 export PYTHONPATH=$DSH_CODE
 cd $DSH_CODE
 case "$1" in
-    mcp) $DSH_VENV/bin/python dsh_core/cli.py mcp --port 3000 ;;
-    api) $DSH_VENV/bin/python dsh_core/cli.py api --port 8000 ;;
-    all) $DSH_VENV/bin/python dsh_core/cli.py all ;;
+    mcp) $DSH_VENV/bin/python jkos_core/cli.py mcp --port 3000 ;;
+    api) $DSH_VENV/bin/python jkos_core/cli.py api --port 8000 ;;
+    all) $DSH_VENV/bin/python jkos_core/cli.py all ;;
     *) echo "用法: $0 {{mcp|api|all}}"; exit 1 ;;
 esac
 '''
@@ -170,7 +170,7 @@ DSH_VENV="{VENV_DIR}"
 DSH_CODE="{CODE_DIR}"
 
 command="/usr/sbin/daemon"
-command_args="-f -r /bin/sh -c \"export DSH_HOME=$DSH_DIR; export DSH_VENV=$DSH_VENV; export DSH_CODE=$DSH_CODE; export PYTHONPATH=$DSH_CODE; cd $DSH_CODE; $DSH_VENV/bin/python dsh_core/cli.py mcp --port 3000\""
+command_args="-f -r /bin/sh -c \"export DSH_HOME=$DSH_DIR; export DSH_VENV=$DSH_VENV; export DSH_CODE=$DSH_CODE; export PYTHONPATH=$DSH_CODE; cd $DSH_CODE; $DSH_VENV/bin/python jkos_core/cli.py mcp --port 3000\""
 
 load_rc_config $name
 run_rc_command "$1"

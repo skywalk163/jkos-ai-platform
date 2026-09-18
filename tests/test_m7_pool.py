@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from dsh_core.db.connection import ConnectionPool, ConnectionPoolTimeout, DatabaseConfig
+from jkos_core.db.connection import ConnectionPool, ConnectionPoolTimeout, DatabaseConfig
 
 
 async def test_pool_start_prefills_min_size_and_is_idempotent():

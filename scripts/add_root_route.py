@@ -32,7 +32,7 @@ def main():
     python_script = r'''
 import sys
 
-with open('/data/dsh/code/dsh_core/mcp/server.py', 'r') as f:
+with open('/data/dsh/code/jkos_core/mcp/server.py', 'r') as f:
     content = f.read()
 
 # 在 @app.get("/health") 之前插入 @app.get("/")
@@ -56,7 +56,7 @@ if setup_routes_start != -1:
 else:
     print("Could not find _setup_routes method")
 
-with open('/data/dsh/code/dsh_core/mcp/server.py', 'w') as f:
+with open('/data/dsh/code/jkos_core/mcp/server.py', 'w') as f:
     f.write(content)
 '''
     
@@ -65,12 +65,12 @@ with open('/data/dsh/code/dsh_core/mcp/server.py', 'w') as f:
     
     # 验证
     print("\n[2] 验证路由...")
-    run(client, "grep -n '@app.get(\"/\")' /data/dsh/code/dsh_core/mcp/server.py")
+    run(client, "grep -n '@app.get(\"/\")' /data/dsh/code/jkos_core/mcp/server.py")
     
     # 重启 MCP Server
     print("\n[3] 重启 MCP Server...")
-    run(client, "pkill -f 'dsh_core.cli.py mcp' 2>/dev/null; sleep 1")
-    run(client, "cd /data/dsh/code && PYTHONPATH=/data/dsh/code nohup /data/dsh/venv/bin/python dsh_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
+    run(client, "pkill -f 'jkos_core.cli.py mcp' 2>/dev/null; sleep 1")
+    run(client, "cd /data/dsh/code && PYTHONPATH=/data/dsh/code nohup /data/dsh/venv/bin/python jkos_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
     
     # 等待启动
     print("\n[4] 等待 3 秒...")

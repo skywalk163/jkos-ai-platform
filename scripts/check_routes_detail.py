@@ -29,15 +29,15 @@ def main():
 
     # 检查 /health 路由附近
     print("\n[2] 检查 /health 路由附近...")
-    run(client, "sed -n '160,175p' /data/dsh/code/dsh_core/mcp/server.py")
+    run(client, "sed -n '160,175p' /data/dsh/code/jkos_core/mcp/server.py")
     
     # 检查 _setup_routes 方法
     print("\n[3] 检查 _setup_routes 方法...")
-    run(client, "grep -n '_setup_routes' /data/dsh/code/dsh_core/mcp/server.py")
+    run(client, "grep -n '_setup_routes' /data/dsh/code/jkos_core/mcp/server.py")
     
     # 检查 _setup_routes 方法内容
     print("\n[4] 检查 _setup_routes 方法内容...")
-    run(client, "sed -n '130,180p' /data/dsh/code/dsh_core/mcp/server.py")
+    run(client, "sed -n '130,180p' /data/dsh/code/jkos_core/mcp/server.py")
     
     client.close()
 

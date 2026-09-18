@@ -13,8 +13,8 @@ import uvicorn
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 
-from dsh_core.mcp import server as mcp_server_module
-from dsh_core.mcp.server import (
+from jkos_core.mcp import server as mcp_server_module
+from jkos_core.mcp.server import (
     MCPServer,
     MCPClient,
     MCPToolResult,
@@ -526,7 +526,7 @@ class TestMCPServerRoutes:
         resp = client.post("/sse")
         assert resp.json() == {"status": "SSE endpoint available"}
 
-    @patch("dsh_core.mcp.server.httpx.get", side_effect=RuntimeError("no server"))
+    @patch("jkos_core.mcp.server.httpx.get", side_effect=RuntimeError("no server"))
     def test_sse_stream(self, mock_get, client):
         resp = client.get("/sse")
         assert resp.status_code == 200
@@ -594,9 +594,9 @@ class TestMCPServerRoutes:
     async def test_sse_stream_heartbeat(self, client):
         """覆盖 server.py:728-730 SSE 心跳循环。"""
         with patch(
-            "dsh_core.mcp.server.httpx.get",
+            "jkos_core.mcp.server.httpx.get",
             AsyncMock(side_effect=[MagicMock(), MagicMock(), RuntimeError("stop")]),
-        ), patch("dsh_core.mcp.server.time.sleep"):
+        ), patch("jkos_core.mcp.server.time.sleep"):
             resp = client.get("/sse")
         assert resp.status_code == 200
         assert "connected" in resp.text
@@ -683,9 +683,9 @@ class TestMCPServerEntrypoint:
     async def test_sse_stream_heartbeat(self, client):
         """覆盖 server.py:728-730 SSE 心跳循环。"""
         with patch(
-            "dsh_core.mcp.server.httpx.get",
+            "jkos_core.mcp.server.httpx.get",
             AsyncMock(side_effect=[MagicMock(), MagicMock(), RuntimeError("stop")]),
-        ), patch("dsh_core.mcp.server.time.sleep"):
+        ), patch("jkos_core.mcp.server.time.sleep"):
             resp = client.get("/sse")
         assert resp.status_code == 200
         assert "connected" in resp.text

@@ -48,9 +48,9 @@ def main():
     print("\n[5] 验证安装...")
     run(client, f"{VENV_DIR}/bin/python -c 'import httpx; import pydantic; import fastapi; import structlog; print(\"httpx:\", httpx.__version__, \"pydantic:\", pydantic.__version__, \"fastapi:\", fastapi.__version__)'")
     
-    # 验证 dsh_core
-    print("\n[6] 验证 dsh_core...")
-    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'import dsh_core; from dsh_core.mcp.server import PREDEFINED_TOOLS; print(\"dsh_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
+    # 验证 jkos_core
+    print("\n[6] 验证 jkos_core...")
+    run(client, f"cd {CODE_DIR} && {VENV_DIR}/bin/python -c 'import jkos_core; from jkos_core.mcp.server import PREDEFINED_TOOLS; print(\"jkos_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
     
     # 更新启动脚本
     print("\n[7] 更新启动脚本...")
@@ -62,9 +62,9 @@ export PYTHONPATH=$DSH_CODE
 export TMPDIR=/data/tmp
 cd $DSH_CODE
 case "$1" in
-    mcp) $DSH_VENV/bin/python dsh_core/cli.py mcp --port 3000 ;;
-    api) $DSH_VENV/bin/python dsh_core/cli.py api --port 8000 ;;
-    all) $DSH_VENV/bin/python dsh_core/cli.py all ;;
+    mcp) $DSH_VENV/bin/python jkos_core/cli.py mcp --port 3000 ;;
+    api) $DSH_VENV/bin/python jkos_core/cli.py api --port 8000 ;;
+    all) $DSH_VENV/bin/python jkos_core/cli.py all ;;
     *) echo "用法: $0 {{mcp|api|all}}"; exit 1 ;;
 esac
 '''
@@ -74,7 +74,7 @@ esac
     
     # 测试启动
     print("\n[8] 测试启动 MCP Server (3秒)...")
-    run(client, f"cd {CODE_DIR} && timeout 3 {VENV_DIR}/bin/python dsh_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
+    run(client, f"cd {CODE_DIR} && timeout 3 {VENV_DIR}/bin/python jkos_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
     
     # 检查端口
     print("\n[9] 检查端口...")

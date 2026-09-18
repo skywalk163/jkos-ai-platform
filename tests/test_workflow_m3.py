@@ -1,6 +1,6 @@
 """工作流引擎补充覆盖测试（M6 任务 6.1）— 纯 assert，兼容 pytest 直跑
 
-目标：dsh_core/workflow/engine.py 覆盖率 88% → 95%（M6 任务 6.1）。
+目标：jkos_core/workflow/engine.py 覆盖率 88% → 95%（M6 任务 6.1）。
 本文件覆盖 dedupe 后仍漏测的分支（engine.py 当前 323 stmts / 38 missed）：
 
   - start 租户不存在（91）
@@ -25,8 +25,8 @@ import os
 import tempfile
 from types import SimpleNamespace
 
-from dsh_core.audit import AuditLogger
-from dsh_core.db import (
+from jkos_core.audit import AuditLogger
+from jkos_core.db import (
     INSTANCE_CANCELLED,
     INSTANCE_WAITING_APPROVAL,
     ApprovalTaskRepo,
@@ -35,10 +35,10 @@ from dsh_core.db import (
     TenantRepo,
     WorkflowRepo,
 )
-from dsh_core.llm import build_llm_router
-from dsh_core.workflow import WorkflowEngine, WorkflowError
-from dsh_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
-from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
+from jkos_core.llm import build_llm_router
+from jkos_core.workflow import WorkflowEngine, WorkflowError
+from jkos_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
+from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
 
 
 def make_engine():

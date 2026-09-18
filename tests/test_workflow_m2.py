@@ -8,10 +8,10 @@ import os
 import tempfile
 from types import SimpleNamespace
 
-from dsh_core.audit import AuditLogger
-from dsh_core.db import ApprovalTaskRepo, Database, DatabaseConfig, TenantRepo, WorkflowRepo
-from dsh_core.llm import build_llm_router
-from dsh_core.workflow import WorkflowEngine
+from jkos_core.audit import AuditLogger
+from jkos_core.db import ApprovalTaskRepo, Database, DatabaseConfig, TenantRepo, WorkflowRepo
+from jkos_core.llm import build_llm_router
+from jkos_core.workflow import WorkflowEngine
 
 
 def make_engine(tenant_code="media"):
@@ -198,7 +198,7 @@ def test_tenant_isolation_media_vs_dev():
         assert status_dev["instance"]["status"] == "COMPLETED"
 
         # 验证 media 租户看不到 dev 租户的工作流
-        from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
+        from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
         assert "media.content_production" in WORKFLOW_REGISTRY
         assert "hello" in WORKFLOW_REGISTRY
     finally:
@@ -208,7 +208,7 @@ def test_tenant_isolation_media_vs_dev():
 
 def test_media_workflow_registration():
     """验证媒体工作流已正确注册"""
-    from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
+    from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
 
     assert "media.content_production" in WORKFLOW_REGISTRY
     assert "media.sentiment_monitoring" in WORKFLOW_REGISTRY
@@ -226,7 +226,7 @@ def test_media_workflow_registration():
 
 def test_media_node_registration():
     """验证媒体节点已正确注册"""
-    from dsh_core.workflow.nodes import BUILTIN_NODES
+    from jkos_core.workflow.nodes import BUILTIN_NODES
 
     media_nodes = [
         "content_planner", "content_generator", "content_reviewer", "content_publisher",

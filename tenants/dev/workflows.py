@@ -19,8 +19,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
-from dsh_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
-from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
+from jkos_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
+from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
 from tenants.dev.adapters.git import collect_diff
 from tenants.dev.analyzers.llm_review import node_llm_review
 from tenants.dev.analyzers.rules import scan_patch, summarize_findings

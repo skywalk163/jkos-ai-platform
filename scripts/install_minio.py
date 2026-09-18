@@ -34,13 +34,13 @@ def main():
     print("\n[2] 安装 minio...")
     run(client, f"{VENV_DIR}/bin/pip install --no-cache-dir minio 2>&1 | tail -5")
     
-    # 验证 dsh_core
-    print("\n[3] 验证 dsh_core...")
-    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} {VENV_DIR}/bin/python -c 'import dsh_core; from dsh_core.mcp.server import PREDEFINED_TOOLS; print(\"dsh_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
+    # 验证 jkos_core
+    print("\n[3] 验证 jkos_core...")
+    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} {VENV_DIR}/bin/python -c 'import jkos_core; from jkos_core.mcp.server import PREDEFINED_TOOLS; print(\"jkos_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
     
     # 测试启动
     print("\n[4] 测试启动 MCP Server (3秒)...")
-    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} timeout 3 {VENV_DIR}/bin/python dsh_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
+    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} timeout 3 {VENV_DIR}/bin/python jkos_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
     
     # 检查端口
     print("\n[5] 检查端口...")

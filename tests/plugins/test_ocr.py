@@ -4,8 +4,8 @@ import pytest
 import base64
 from unittest.mock import Mock, patch
 
-from dsh_core.plugins import PluginConfig, PluginContext
-from dsh_core.plugins.ocr.plugin import OCRPlugin, OCRConfig
+from jkos_core.plugins import PluginConfig, PluginContext
+from jkos_core.plugins.ocr.plugin import OCRPlugin, OCRConfig
 
 
 class TestOCRPlugin:
@@ -103,7 +103,7 @@ class TestOCRResult:
 
     def test_result_to_dict(self):
         """测试结果转字典"""
-        from dsh_core.plugins.ocr.plugin import OCRResult
+        from jkos_core.plugins.ocr.plugin import OCRResult
 
         result = OCRResult(
             text="测试文字",
@@ -123,5 +123,5 @@ class TestOCRConvenience:
     async def test_ocr_image_invalid(self):
         """测试便捷函数处理无效数据"""
         with pytest.raises(Exception):
-            from dsh_core.plugins.ocr.plugin import ocr_image
+            from jkos_core.plugins.ocr.plugin import ocr_image
             await ocr_image(b"invalid data")

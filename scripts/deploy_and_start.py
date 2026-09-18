@@ -33,19 +33,19 @@ def main():
 
     # 部署更新后的 storage/manager.py
     print("\n[2] 部署 storage/manager.py...")
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\storage\manager.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\storage\manager.py", "r", encoding="utf-8") as f:
         content = f.read()
     b64 = base64.b64encode(content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/storage/manager.py && chown ai:wheel {CODE_DIR}/dsh_core/storage/manager.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/storage/manager.py && chown ai:wheel {CODE_DIR}/jkos_core/storage/manager.py")
     print("  ✓ storage/manager.py 已更新")
     
-    # 验证 dsh_core
-    print("\n[3] 验证 dsh_core...")
-    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} {VENV_DIR}/bin/python -c 'import dsh_core; from dsh_core.mcp.server import PREDEFINED_TOOLS; print(\"dsh_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
+    # 验证 jkos_core
+    print("\n[3] 验证 jkos_core...")
+    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} {VENV_DIR}/bin/python -c 'import jkos_core; from jkos_core.mcp.server import PREDEFINED_TOOLS; print(\"jkos_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
     
     # 测试启动
     print("\n[4] 测试启动 MCP Server (3秒)...")
-    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} timeout 3 {VENV_DIR}/bin/python dsh_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
+    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} timeout 3 {VENV_DIR}/bin/python jkos_core/cli.py mcp --port 3000 2>&1 || echo 'Server started'")
     
     # 检查端口
     print("\n[5] 检查端口...")

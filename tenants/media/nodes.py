@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from dsh_core.workflow.base import NodeContext
+from jkos_core.workflow.base import NodeContext
 
 from tenants.media.adapters.content import ContentPublisher, SentimentMonitor
 from tenants.media.analyzers.content import ContentPlanner, SentimentAnalyzer

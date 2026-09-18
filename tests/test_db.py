@@ -2,7 +2,7 @@
 import os
 import tempfile
 
-from dsh_core.db import (
+from jkos_core.db import (
     Database,
     DatabaseConfig,
     ApprovalTaskRepo,
@@ -14,7 +14,7 @@ from dsh_core.db import (
     is_ulid,
     new_ulid,
 )
-from dsh_core.db.repos import _loads
+from jkos_core.db.repos import _loads
 
 
 def make_db() -> Database:

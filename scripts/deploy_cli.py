@@ -33,19 +33,19 @@ def main():
 
     # 部署更新后的 cli.py
     print("\n[2] 部署 cli.py...")
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\cli.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\cli.py", "r", encoding="utf-8") as f:
         content = f.read()
     b64 = base64.b64encode(content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/dsh_core/cli.py && chown ai:wheel {CODE_DIR}/dsh_core/cli.py")
+    run(client, f"echo '{b64}' | base64 -d > {CODE_DIR}/jkos_core/cli.py && chown ai:wheel {CODE_DIR}/jkos_core/cli.py")
     print("  ✓ cli.py 已更新")
     
-    # 验证 dsh_core
-    print("\n[3] 验证 dsh_core...")
-    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} {VENV_DIR}/bin/python -c 'import dsh_core; from dsh_core.mcp.server import PREDEFINED_TOOLS; print(\"dsh_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
+    # 验证 jkos_core
+    print("\n[3] 验证 jkos_core...")
+    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} {VENV_DIR}/bin/python -c 'import jkos_core; from jkos_core.mcp.server import PREDEFINED_TOOLS; print(\"jkos_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
     
     # 后台启动 MCP Server
     print("\n[4] 后台启动 MCP Server...")
-    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} nohup {VENV_DIR}/bin/python dsh_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
+    run(client, f"cd {CODE_DIR} && PYTHONPATH={CODE_DIR} nohup {VENV_DIR}/bin/python jkos_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
     
     # 等待启动
     print("\n[5] 等待 3 秒...")
@@ -83,7 +83,7 @@ def main():
     curl http://{HOST}:3000/tools
 
   停止:
-    pkill -f "dsh_core.cli.py mcp"
+    pkill -f "jkos_core.cli.py mcp"
 """)
     
     client.close()

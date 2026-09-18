@@ -30,16 +30,16 @@ def main():
 
     # 部署修复后的 mcp/server.py
     print("\n[2] 部署 mcp/server.py...")
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\mcp\server.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\mcp\server.py", "r", encoding="utf-8") as f:
         content = f.read()
     b64 = base64.b64encode(content.encode('utf-8')).decode('ascii')
-    run(client, f"echo '{b64}' | base64 -d > /data/dsh/code/dsh_core/mcp/server.py && chown ai:wheel /data/dsh/code/dsh_core/mcp/server.py")
+    run(client, f"echo '{b64}' | base64 -d > /data/dsh/code/jkos_core/mcp/server.py && chown ai:wheel /data/dsh/code/jkos_core/mcp/server.py")
     print("  ✓ mcp/server.py 已部署")
     
     # 重启 MCP Server
     print("\n[3] 重启 MCP Server...")
-    run(client, "pkill -f 'dsh_core.cli.py mcp' 2>/dev/null; sleep 1")
-    run(client, "cd /data/dsh/code && PYTHONPATH=/data/dsh/code nohup /data/dsh/venv/bin/python dsh_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
+    run(client, "pkill -f 'jkos_core.cli.py mcp' 2>/dev/null; sleep 1")
+    run(client, "cd /data/dsh/code && PYTHONPATH=/data/dsh/code nohup /data/dsh/venv/bin/python jkos_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
     
     # 等待启动
     print("\n[4] 等待 3 秒...")

@@ -1,6 +1,6 @@
 """M14: ToolRegistry 查询与市场元数据单测
 
-补齐 `dsh_core/mcp/registry.py` 中「查询 / 搜索 / 市场元数据」一族的缺失覆盖率：
+补齐 `jkos_core/mcp/registry.py` 中「查询 / 搜索 / 市场元数据」一族的缺失覆盖率：
 L302-303 / L307 / L325-346 / L350 / L358 / L366 / L374 / L382 / L390 /
 L394-405 / L411-412 / L420-429 / L433-438 / L442-454 / L458 / L466 / L474 / L478。
 
@@ -11,13 +11,13 @@ L394-405 / L411-412 / L420-429 / L433-438 / L442-454 / L458 / L466 / L474 / L478
   相关断言已在 docstring 中写明理由。
 """
 
-from dsh_core.mcp.registry import (
+from jkos_core.mcp.registry import (
     ToolCategory,
     ToolMarketplaceMetadata,
     ToolRegistry,
     ToolVisibility,
 )
-from dsh_core.mcp.server import MCPTool
+from jkos_core.mcp.server import MCPTool
 
 
 def _make_tool(name: str, desc: str = "tool") -> MCPTool:

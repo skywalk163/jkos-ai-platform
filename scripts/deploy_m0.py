@@ -24,28 +24,28 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # (本地相对路径, 服务器绝对路径)
 FILES = [
     # 轨道 A: 数据层 + 审计
-    ("dsh_core/db/__init__.py",      f"{CODE}/dsh_core/db/__init__.py"),
-    ("dsh_core/db/ulid.py",          f"{CODE}/dsh_core/db/ulid.py"),
-    ("dsh_core/db/connection.py",    f"{CODE}/dsh_core/db/connection.py"),
-    ("dsh_core/db/schema.py",        f"{CODE}/dsh_core/db/schema.py"),
-    ("dsh_core/db/repos.py",         f"{CODE}/dsh_core/db/repos.py"),
-    ("dsh_core/audit/__init__.py",   f"{CODE}/dsh_core/audit/__init__.py"),
-    ("dsh_core/audit/logger.py",     f"{CODE}/dsh_core/audit/logger.py"),
+    ("jkos_core/db/__init__.py",      f"{CODE}/jkos_core/db/__init__.py"),
+    ("jkos_core/db/ulid.py",          f"{CODE}/jkos_core/db/ulid.py"),
+    ("jkos_core/db/connection.py",    f"{CODE}/jkos_core/db/connection.py"),
+    ("jkos_core/db/schema.py",        f"{CODE}/jkos_core/db/schema.py"),
+    ("jkos_core/db/repos.py",         f"{CODE}/jkos_core/db/repos.py"),
+    ("jkos_core/audit/__init__.py",   f"{CODE}/jkos_core/audit/__init__.py"),
+    ("jkos_core/audit/logger.py",     f"{CODE}/jkos_core/audit/logger.py"),
     # 轨道 B: LLM 路由
-    ("dsh_core/llm/__init__.py",     f"{CODE}/dsh_core/llm/__init__.py"),
-    ("dsh_core/llm/base.py",         f"{CODE}/dsh_core/llm/base.py"),
-    ("dsh_core/llm/deepseek.py",     f"{CODE}/dsh_core/llm/deepseek.py"),
-    ("dsh_core/llm/simulated.py",    f"{CODE}/dsh_core/llm/simulated.py"),
-    ("dsh_core/llm/router.py",       f"{CODE}/dsh_core/llm/router.py"),
+    ("jkos_core/llm/__init__.py",     f"{CODE}/jkos_core/llm/__init__.py"),
+    ("jkos_core/llm/base.py",         f"{CODE}/jkos_core/llm/base.py"),
+    ("jkos_core/llm/deepseek.py",     f"{CODE}/jkos_core/llm/deepseek.py"),
+    ("jkos_core/llm/simulated.py",    f"{CODE}/jkos_core/llm/simulated.py"),
+    ("jkos_core/llm/router.py",       f"{CODE}/jkos_core/llm/router.py"),
     # 轨道 C: 租户上下文/认证
-    ("dsh_core/auth/__init__.py",      f"{CODE}/dsh_core/auth/__init__.py"),
-    ("dsh_core/auth/context.py",       f"{CODE}/dsh_core/auth/context.py"),
-    ("dsh_core/auth/jwt.py",           f"{CODE}/dsh_core/auth/jwt.py"),
-    ("dsh_core/auth/dependencies.py",  f"{CODE}/dsh_core/auth/dependencies.py"),
+    ("jkos_core/auth/__init__.py",      f"{CODE}/jkos_core/auth/__init__.py"),
+    ("jkos_core/auth/context.py",       f"{CODE}/jkos_core/auth/context.py"),
+    ("jkos_core/auth/jwt.py",           f"{CODE}/jkos_core/auth/jwt.py"),
+    ("jkos_core/auth/dependencies.py",  f"{CODE}/jkos_core/auth/dependencies.py"),
     # 装配层 + 入口
-    ("dsh_core/bootstrap.py",        f"{CODE}/dsh_core/bootstrap.py"),
-    ("dsh_core/cli.py",              f"{CODE}/dsh_core/cli.py"),
-    ("dsh_core/mcp/server.py",       f"{CODE}/dsh_core/mcp/server.py"),
+    ("jkos_core/bootstrap.py",        f"{CODE}/jkos_core/bootstrap.py"),
+    ("jkos_core/cli.py",              f"{CODE}/jkos_core/cli.py"),
+    ("jkos_core/mcp/server.py",       f"{CODE}/jkos_core/mcp/server.py"),
     # 测试与自检
     ("tests/test_db.py",             f"{CODE}/tests/test_db.py"),
     ("tests/test_llm.py",            f"{CODE}/tests/test_llm.py"),
@@ -71,8 +71,8 @@ def main():
 
     # 目录准备
     rc, out, err = run(client, (
-        f"mkdir -p {CODE}/dsh_core/db {CODE}/dsh_core/audit {CODE}/dsh_core/llm"
-        f" {CODE}/dsh_core/auth {CODE}/tests {CODE}/scripts /var/dsh /data/dsh/logs"
+        f"mkdir -p {CODE}/jkos_core/db {CODE}/jkos_core/audit {CODE}/jkos_core/llm"
+        f" {CODE}/jkos_core/auth {CODE}/tests {CODE}/scripts /var/dsh /data/dsh/logs"
     ))
     assert rc == 0, f"mkdir 失败: {err}"
 
@@ -99,10 +99,10 @@ def main():
     # CLI 验证
     print("[4] CLI 验证 ...")
     for label, cmd in [
-        ("db migrate", f"cd {CODE} && PYTHONPATH={CODE} DSH_DB_PATH=/var/dsh/dsh.db {VENV} dsh_core/cli.py db migrate"),
-        ("db stats",   f"cd {CODE} && PYTHONPATH={CODE} DSH_DB_PATH=/var/dsh/dsh.db {VENV} dsh_core/cli.py db stats"),
-        ("token",      f"cd {CODE} && PYTHONPATH={CODE} DSH_DB_PATH=/var/dsh/dsh.db {VENV} dsh_core/cli.py token --tenant dev --days 1"),
-        ("llm ping",   f"cd {CODE} && PYTHONPATH={CODE} DSH_DB_PATH=/var/dsh/dsh.db {VENV} dsh_core/cli.py llm"),
+        ("db migrate", f"cd {CODE} && PYTHONPATH={CODE} DSH_DB_PATH=/var/dsh/dsh.db {VENV} jkos_core/cli.py db migrate"),
+        ("db stats",   f"cd {CODE} && PYTHONPATH={CODE} DSH_DB_PATH=/var/dsh/dsh.db {VENV} jkos_core/cli.py db stats"),
+        ("token",      f"cd {CODE} && PYTHONPATH={CODE} DSH_DB_PATH=/var/dsh/dsh.db {VENV} jkos_core/cli.py token --tenant dev --days 1"),
+        ("llm ping",   f"cd {CODE} && PYTHONPATH={CODE} DSH_DB_PATH=/var/dsh/dsh.db {VENV} jkos_core/cli.py llm"),
     ]:
         rc, out, err = run(client, cmd, timeout=60)
         print(f"  [{label}] rc={rc}")
@@ -113,15 +113,15 @@ def main():
 
     # 重启 MCP Server（沿用既有模式）
     print("[5] 重启 MCP Server ...")
-    run(client, "pkill -f 'dsh_core.cli.py mcp' 2>/dev/null; sleep 1")
+    run(client, "pkill -f 'jkos_core.cli.py mcp' 2>/dev/null; sleep 1")
     rc, out, err = run(client, (
-        f"cd {CODE} && PYTHONPATH={CODE} nohup {VENV} dsh_core/cli.py mcp --port 3000"
+        f"cd {CODE} && PYTHONPATH={CODE} nohup {VENV} jkos_core/cli.py mcp --port 3000"
         " > /data/dsh/logs/mcp.log 2>&1 &"
     ))
     run(client, "sleep 3")
     rc, out, err = run(client, "curl -s -m 5 http://127.0.0.1:3000/health || echo 'HEALTH-CHECK-FAILED'")
     print(f"  /health: {out}")
-    rc, out, err = run(client, "pgrep -fl 'dsh_core.cli.py mcp' || echo 'NOT-RUNNING'")
+    rc, out, err = run(client, "pgrep -fl 'jkos_core.cli.py mcp' || echo 'NOT-RUNNING'")
     print(f"  process: {out}")
 
     client.close()

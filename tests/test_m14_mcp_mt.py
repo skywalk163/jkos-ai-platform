@@ -14,14 +14,14 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from dsh_core.auth import (
+from jkos_core.auth import (
     AuthConfig,
     JWTManager,
     issue_access_token,
 )
-from dsh_core.auth import dependencies as auth_deps
-from dsh_core.mcp.server import PREDEFINED_TOOLS, create_app
-from dsh_core.utils.ratelimit import RateLimiter, _global_limiter
+from jkos_core.auth import dependencies as auth_deps
+from jkos_core.mcp.server import PREDEFINED_TOOLS, create_app
+from jkos_core.utils.ratelimit import RateLimiter, _global_limiter
 
 _SECRET = "m14-test-secret-0123456789abcdef"
 _TENANT_A = ("tenant-a", "TA")

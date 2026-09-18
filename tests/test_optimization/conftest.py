@@ -6,11 +6,11 @@
 
 import pytest
 
-from dsh_core.optimization import OptimizationEngine
-from dsh_core.optimization.automation_engine import AutomationEngine
-from dsh_core.optimization.process_solidifier import ProcessSolidifier
-from dsh_core.optimization.template_manager import TemplateManager
-from dsh_core.optimization.token_optimizer import TokenOptimizer
+from jkos_core.optimization import OptimizationEngine
+from jkos_core.optimization.automation_engine import AutomationEngine
+from jkos_core.optimization.process_solidifier import ProcessSolidifier
+from jkos_core.optimization.template_manager import TemplateManager
+from jkos_core.optimization.token_optimizer import TokenOptimizer
 
 
 @pytest.fixture

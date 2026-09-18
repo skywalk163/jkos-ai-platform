@@ -4,6 +4,25 @@
 > 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义参考 [SemVer](https://semver.org/lang/zh-CN/)。
 > M2-M4 为早期规划实现的里程碑，功能已折叠计入后续里程碑提交，无独立提交记录。
 
+## [M15] JKOS 代码层更名落地 - 2026-09-18
+
+### 📝 变更
+- **包名更名**：`dsh_core` → `jkos_core`（目录、全部 import、pyproject `--cov`/coverage source 同步），约 870 处机械替换
+- **CLI 更名**：`dsh-server` → `jkos-server`、`dsh-plugin` → `jkos-plugin`（pyproject scripts、usage 字符串、测试 argv 断言同步）
+- **项目名**：pyproject `name` `dsh-ai-platform` → `jkos-ai-platform`（本地目录名不变）
+- **品牌文案**：`server.py` 启动横幅 / `jkos_core.cli` 描述与日志 / OpenAPI title（`DSH AI 中台 API` → `极快AI操作系统 API`）/ `locales/{zh,en}` `app.name`（`极快AI操作系统` / `Jikuai AI OS`）/ `plugins/i18n.py` 内置回退文案 / `mcp/server.py` 模拟 OCR/ASR 示例文案
+- **测试同步**：品牌断言更新（`test_api_plugin_tool_routes.py`、`test_cli.py`、`test_m5_i18n.py`）；en 文案断言同步为 `Jikuai AI OS`
+
+### 📌 新旧命令映射
+| 旧 | 新 |
+|---|---|
+| `dsh-server` | `jkos-server` |
+| `dsh-plugin` | `jkos-plugin` |
+| `python -c "...dsh_core.cli..."` | `python -c "...jkos_core.cli..."` |
+
+### 📌 不变项
+- `DSH_*` 环境变量前缀、本地目录名 `dsh-ai-platform`、远端 `/data/dsh/*` 路径、历史文档称谓（存档）
+
 ## [待推送] - 2026-09-18
 
 ### 📝 变更

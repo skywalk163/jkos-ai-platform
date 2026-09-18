@@ -11,14 +11,14 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
-from dsh_core.api.routes import create_app
-from dsh_core.auth.dependencies import AuthConfig, JWTManager
-from dsh_core.audit import AuditLogger
-from dsh_core.db import ApprovalTaskRepo, Database, DatabaseConfig, TenantRepo, WorkflowRepo
-from dsh_core.llm import build_llm_router
-from dsh_core.workflow import WorkflowEngine
-from dsh_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
-from dsh_core.workflow.nodes import WORKFLOW_REGISTRY
+from jkos_core.api.routes import create_app
+from jkos_core.auth.dependencies import AuthConfig, JWTManager
+from jkos_core.audit import AuditLogger
+from jkos_core.db import ApprovalTaskRepo, Database, DatabaseConfig, TenantRepo, WorkflowRepo
+from jkos_core.llm import build_llm_router
+from jkos_core.workflow import WorkflowEngine
+from jkos_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
+from jkos_core.workflow.nodes import WORKFLOW_REGISTRY
 
 
 def make_engine():

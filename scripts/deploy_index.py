@@ -40,7 +40,7 @@ def main():
     print("\n[3] 更新 MCP Server 添加静态文件服务...")
     
     # 读取当前 mcp/server.py 并添加静态文件路由
-    with open(r"G:\dswork\AI\dsh-ai-platform\dsh_core\mcp\server.py", "r", encoding="utf-8") as f:
+    with open(r"G:\dswork\AI\dsh-ai-platform\jkos_core\mcp\server.py", "r", encoding="utf-8") as f:
         mcp_content = f.read()
     
     # 在 create_app 函数中添加静态文件路由
@@ -68,15 +68,15 @@ def main():
         
         # 写回文件
         b64 = base64.b64encode(mcp_content.encode('utf-8')).decode('ascii')
-        run(client, f"echo '{b64}' | base64 -d > /data/dsh/code/dsh_core/mcp/server.py && chown ai:wheel /data/dsh/code/dsh_core/mcp/server.py")
+        run(client, f"echo '{b64}' | base64 -d > /data/dsh/code/jkos_core/mcp/server.py && chown ai:wheel /data/dsh/code/jkos_core/mcp/server.py")
         print("  ✓ MCP Server 已更新")
     else:
         print("  静态文件路由已存在")
     
     # 重启 MCP Server
     print("\n[4] 重启 MCP Server...")
-    run(client, "pkill -f 'dsh_core.cli.py mcp' 2>/dev/null; sleep 1")
-    run(client, "cd /data/dsh && PYTHONPATH=/data/dsh/code nohup /data/dsh/venv/bin/python dsh_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
+    run(client, "pkill -f 'jkos_core.cli.py mcp' 2>/dev/null; sleep 1")
+    run(client, "cd /data/dsh && PYTHONPATH=/data/dsh/code nohup /data/dsh/venv/bin/python jkos_core/cli.py mcp --port 3000 > /data/dsh/logs/mcp.log 2>&1 &")
     
     # 等待启动
     print("\n[5] 等待 2 秒...")

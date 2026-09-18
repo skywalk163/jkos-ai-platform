@@ -19,7 +19,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dsh_core.db import Database
+from jkos_core.db import Database
 
 logger = logging.getLogger("dsh.tenants.winery.adapters")
 

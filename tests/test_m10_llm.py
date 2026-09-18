@@ -11,7 +11,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from dsh_core.llm import (
+from jkos_core.llm import (
     QwenProvider,
     ClaudeProvider,
     build_qwen_provider,

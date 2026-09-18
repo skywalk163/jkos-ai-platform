@@ -14,7 +14,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from dsh_core.plugins.i18n import (
+from jkos_core.plugins.i18n import (
     I18nManager,
     LanguageCode,
     LanguageDetector,
@@ -105,7 +105,7 @@ class TestI18nManager:
         """测试中文翻译"""
         i18n.set_language("zh")
         
-        assert i18n.translate("app.name") == "DSH AI 中台"
+        assert i18n.translate("app.name") == "极快AI操作系统"
         assert i18n.translate("button.submit") == "提交"
         assert i18n.translate("status.active") == "活跃"
     
@@ -113,7 +113,7 @@ class TestI18nManager:
         """测试英文翻译"""
         i18n.set_language("en")
         
-        assert i18n.translate("app.name") == "DSH AI Platform"
+        assert i18n.translate("app.name") == "Jikuai AI OS"
         assert i18n.translate("button.submit") == "Submit"
         assert i18n.translate("status.active") == "Active"
     
@@ -141,7 +141,7 @@ class TestI18nManager:
         translations = i18n.translate_many(keys)
         
         assert len(translations) == 3
-        assert translations["app.name"] == "DSH AI 中台"
+        assert translations["app.name"] == "极快AI操作系统"
         assert translations["button.submit"] == "提交"
     
     def test_has_translation(self, i18n):
@@ -187,7 +187,7 @@ class TestConvenienceFunctions:
         i18n.set_language("zh")
         
         result = _("app.name")
-        assert result == "DSH AI 中台"
+        assert result == "极快AI操作系统"
     
     def test_detect_language(self):
         """测试语言检测便捷函数"""

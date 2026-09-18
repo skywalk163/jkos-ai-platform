@@ -16,8 +16,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from dsh_core.db import Database, DatabaseConfig
-from dsh_core.db.ulid import new_ulid as generate_ulid
+from jkos_core.db import Database, DatabaseConfig
+from jkos_core.db.ulid import new_ulid as generate_ulid
 
 logger = logging.getLogger("dsh.tenants.winery.models")
 

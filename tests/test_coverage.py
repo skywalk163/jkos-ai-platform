@@ -57,12 +57,12 @@ class TestGenerationPlan:
 class CoverageAnalyzer:
     """覆盖率分析器
 
-    基于 AST 静态分析方式统计 dsh_core 下各模块的语句量与低风险语句
+    基于 AST 静态分析方式统计 jkos_core 下各模块的语句量与低风险语句
     （异常处理分支、入口守卫等常规单测不易覆盖的路径），估算模块覆盖率。
     通过直接构造 CoverageResult 或配合 .coverage 数据实现闭环。
     """
 
-    def __init__(self, project_root: Union[str, Path], source_dir: str = "dsh_core"):
+    def __init__(self, project_root: Union[str, Path], source_dir: str = "jkos_core"):
         self.project_root = Path(project_root)
         self.source_root = self.project_root / source_dir
 
@@ -81,7 +81,7 @@ class CoverageAnalyzer:
 
     @staticmethod
     def _module_name(root: Path, path: Path) -> str:
-        """将文件路径转换为模块名 (dsh_core.xxx.yyy)"""
+        """将文件路径转换为模块名 (jkos_core.xxx.yyy)"""
         rel = path.relative_to(root)
         parts = list(rel.parts)
         if parts[-1] == "__init__.py":

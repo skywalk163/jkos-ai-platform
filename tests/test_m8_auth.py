@@ -12,7 +12,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi import HTTPException
 
-from dsh_core.auth import (
+from jkos_core.auth import (
     JWTManager,
     AuthConfig,
     issue_access_token,
@@ -35,7 +35,7 @@ from dsh_core.auth import (
     ROLE_OPERATOR,
     ROLE_VIEWER,
 )
-from dsh_core.auth.jwt import TokenInvalid, TokenExpired, JWTError
+from jkos_core.auth.jwt import TokenInvalid, TokenExpired, JWTError
 
 
 # ─── JWT 刷新令牌测试 ───
@@ -78,7 +78,7 @@ class TestJWTRefreshTokens:
         new_access = refresh_access_token(refresh, "secret-key-that-is-long-enough")
         assert new_access.count(".") == 2
         # 新令牌类型为 access
-        from dsh_core.auth import jwt as jwt_lib
+        from jkos_core.auth import jwt as jwt_lib
         claims = jwt_lib.decode(new_access, "secret-key-that-is-long-enough")
         assert claims.get("type") == "access"
 
@@ -103,7 +103,7 @@ class TestJWTRefreshTokens:
             roles=["operator"],
             secret="secret-key-that-is-long-enough",
         )
-        from dsh_core.auth import jwt as jwt_lib
+        from jkos_core.auth import jwt as jwt_lib
         claims = jwt_lib.decode(refresh, "secret-key-that-is-long-enough")
         jti = claims.get("jti")
         blacklist_refresh_token(jti, time.time() + 3600)
@@ -132,7 +132,7 @@ class TestJWTRefreshTokens:
             roles=["operator"],
             secret="secret-key-that-is-long-enough",
         )
-        from dsh_core.auth import jwt as jwt_lib
+        from jkos_core.auth import jwt as jwt_lib
         with pytest.raises(TokenInvalid):
             jwt_lib.decode(token, "wrong-secret")
 
@@ -217,7 +217,7 @@ class TestRBACPermissions:
 
     def test_require_permission_success(self):
         """require_permission 权限足够时通过"""
-        from dsh_core.auth.context import set_context, TenantContext
+        from jkos_core.auth.context import set_context, TenantContext
         ctx = TenantContext(
             tenant_id="tid1", tenant_code="dev", user_id="user1",
             roles=(ROLE_OPERATOR,), expires_at=0,
@@ -228,7 +228,7 @@ class TestRBACPermissions:
 
     def test_require_permission_fails(self):
         """require_permission 权限不足时抛出 HTTPException(403)"""
-        from dsh_core.auth.context import set_context, TenantContext
+        from jkos_core.auth.context import set_context, TenantContext
         ctx = TenantContext(
             tenant_id="tid1", tenant_code="dev", user_id="user1",
             roles=(ROLE_VIEWER,), expires_at=0,
@@ -392,7 +392,7 @@ class TestEdgeCases:
 
     def test_short_secret_rejected(self):
         """短密钥被拒绝"""
-        from dsh_core.auth import jwt as jwt_lib
+        from jkos_core.auth import jwt as jwt_lib
         with pytest.raises(JWTError, match="密钥缺失或过短"):
             issue_access_token(
                 user_id="user1",
@@ -404,7 +404,7 @@ class TestEdgeCases:
 
     def test_blacklist_gc(self):
         """黑名单垃圾回收"""
-        from dsh_core.auth import jwt as jwt_lib
+        from jkos_core.auth import jwt as jwt_lib
         # 添加一个已过期的黑名单条目
         jti = "expired-jti"
         blacklist_refresh_token(jti, time.time() - 10)

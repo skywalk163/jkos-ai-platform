@@ -1,10 +1,10 @@
 """插件市场 / i18n / 工具 REST 路由集成测试
 
 覆盖目标：
-- ``dsh_core/api/tool_routes.py`` 此前缺失的全部行（序列化辅助、可见域/分类解析的 400 分支、
+- ``jkos_core/api/tool_routes.py`` 此前缺失的全部行（序列化辅助、可见域/分类解析的 400 分支、
   分类/行业标签/推荐/已验证、列表搜索与过滤、注册、详情、版本、发布、激活、注销、评分、
   下载数、市场信息更新含旧式 ``dict()`` 兼容分支）。
-- ``dsh_core/api/marketplace_routes.py`` 全文件（插件市场 10 个端点、i18n 6 个端点、
+- ``jkos_core/api/marketplace_routes.py`` 全文件（插件市场 10 个端点、i18n 6 个端点、
   以及 ``register_marketplace_routes`` / ``register_i18n_routes`` 两个挂载 helper）。
 
 认证策略：照抄 ``tests/test_m14_mcp_mt.py`` 的全局 JWTManager 注入模式——模块级 autouse
@@ -12,7 +12,7 @@ fixture 注入 ``auth_deps._jwt_manager``，模块结束后恢复原值，避免
 所有 app 均通过工厂的**实例注入参数**构造，绝不调用无参 ``get_registry()`` /
 ``get_marketplace()`` / ``get_i18n()`` 全局工厂。
 
-匿名访问说明：``get_tenant_context``（``dsh_core/auth/dependencies.py`` L127-142）在缺少
+匿名访问说明：``get_tenant_context``（``jkos_core/auth/dependencies.py`` L127-142）在缺少
 Bearer Token 时直接抛 401（``_jwt_manager`` 为 None 时才是 500）。因此 ``/api/v1/tools``
 匿名访问返回 **401** 而非 500，本文件按源码实际行为断言 401，未发现 500 缺陷。
 """
@@ -25,26 +25,26 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from dsh_core.api.marketplace_routes import (
+from jkos_core.api.marketplace_routes import (
     create_i18n_router,
     create_plugin_router,
     register_i18n_routes,
     register_marketplace_routes,
 )
-from dsh_core.api.tool_routes import create_tool_router, register_tool_routes
-from dsh_core.auth import AuthConfig, JWTManager, issue_access_token
-from dsh_core.auth import dependencies as auth_deps
-from dsh_core.mcp.registry import ToolCategory, ToolRegistry, ToolVisibility
-from dsh_core.mcp.server import MCPTool
-from dsh_core.plugins.base import (
+from jkos_core.api.tool_routes import create_tool_router, register_tool_routes
+from jkos_core.auth import AuthConfig, JWTManager, issue_access_token
+from jkos_core.auth import dependencies as auth_deps
+from jkos_core.mcp.registry import ToolCategory, ToolRegistry, ToolVisibility
+from jkos_core.mcp.server import MCPTool
+from jkos_core.plugins.base import (
     DeterministicPlugin,
     PluginCategory,
     PluginResult,
     PluginStatus,
 )
-from dsh_core.plugins.i18n import I18nManager
-from dsh_core.plugins.marketplace import PluginMarketplace
-from dsh_core.plugins.registry import EnhancedPluginRegistry, VisibilityDomain
+from jkos_core.plugins.i18n import I18nManager
+from jkos_core.plugins.marketplace import PluginMarketplace
+from jkos_core.plugins.registry import EnhancedPluginRegistry, VisibilityDomain
 
 _SECRET = "m14-test-secret-0123456789abcdef"
 _TENANT_A = ("tenant-a", "TA")
@@ -711,7 +711,7 @@ class TestI18nRoutes:
         assert resp.status_code == 200
         body = resp.json()
         assert body["language"] == "zh"
-        assert body["translations"]["app.name"] == "DSH AI 中台"
+        assert body["translations"]["app.name"] == "极快AI操作系统"
 
         missing = env.client.get(f"{_I18N_BASE}/de")
         assert missing.status_code == 404
@@ -726,7 +726,7 @@ class TestI18nRoutes:
         by_param = env.client.get(f"{_I18N_BASE}?lang=en")
         assert by_param.status_code == 200
         assert by_param.json()["language"] == "en"
-        assert by_param.json()["translations"]["app.name"] == "DSH AI Platform"
+        assert by_param.json()["translations"]["app.name"] == "Jikuai AI OS"
 
         by_header = env.client.get(_I18N_BASE, headers={"Accept-Language": "en-US,en;q=0.9"})
         assert by_header.status_code == 200
@@ -739,7 +739,7 @@ class TestI18nRoutes:
             json={"key": "app.name", "params": {}},
         )
         assert resp.status_code == 200
-        assert resp.json() == {"key": "app.name", "text": "DSH AI Platform", "language": "en"}
+        assert resp.json() == {"key": "app.name", "text": "Jikuai AI OS", "language": "en"}
 
         fallback = env.client.post(f"{_I18N_BASE}/translate", json={"key": "unknown.key"})
         assert fallback.status_code == 200
@@ -755,7 +755,7 @@ class TestI18nRoutes:
         body = resp.json()
         assert body["language"] == "en"
         assert body["translations"] == {
-            "app.name": "DSH AI Platform",
+            "app.name": "Jikuai AI OS",
             "button.submit": "Submit",
         }
 

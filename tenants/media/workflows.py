@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from dsh_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
+from jkos_core.workflow.base import ApprovalSpec, NodeSpec, WorkflowDef
 
 # ─── H1 内容生产管线（M2 任务 2.1）───
 

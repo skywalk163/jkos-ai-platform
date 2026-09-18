@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 
-from dsh_core.storage import StorageConfig, StorageManager, init_database
+from jkos_core.storage import StorageConfig, StorageManager, init_database
 
 
 class TestStorageConfig:
@@ -145,8 +145,8 @@ class TestStorageManagerInitialize:
         with (
             patch("asyncpg.create_pool", new=AsyncMock(return_value=pool)),
             patch("redis.asyncio.Redis") as mock_redis_cls,
-            patch("dsh_core.storage.manager.Minio", return_value=mock_minio),
-            patch("dsh_core.storage.manager.MINIO_AVAILABLE", True),
+            patch("jkos_core.storage.manager.Minio", return_value=mock_minio),
+            patch("jkos_core.storage.manager.MINIO_AVAILABLE", True),
         ):
             mock_redis_cls.return_value = AsyncMock()
 
@@ -168,8 +168,8 @@ class TestStorageManagerInitialize:
         with (
             patch("asyncpg.create_pool", new=AsyncMock(return_value=AsyncMock())),
             patch("redis.asyncio.Redis") as mock_redis_cls,
-            patch("dsh_core.storage.manager.Minio", return_value=mock_minio),
-            patch("dsh_core.storage.manager.MINIO_AVAILABLE", True),
+            patch("jkos_core.storage.manager.Minio", return_value=mock_minio),
+            patch("jkos_core.storage.manager.MINIO_AVAILABLE", True),
         ):
             mock_redis_cls.return_value = AsyncMock()
 
@@ -185,7 +185,7 @@ class TestStorageManagerInitialize:
         with (
             patch("asyncpg.create_pool", new=AsyncMock(return_value=AsyncMock())),
             patch("redis.asyncio.Redis") as mock_redis_cls,
-            patch("dsh_core.storage.manager.MINIO_AVAILABLE", False),
+            patch("jkos_core.storage.manager.MINIO_AVAILABLE", False),
         ):
             mock_redis_cls.return_value = AsyncMock()
             with caplog.at_level(logging.WARNING, logger="dsh.storage"):
@@ -203,8 +203,8 @@ class TestStorageManagerInitialize:
         with (
             patch("asyncpg.create_pool", new=AsyncMock()) as mock_create_pool,
             patch("redis.asyncio.Redis") as mock_redis_cls,
-            patch("dsh_core.storage.manager.Minio"),
-            patch("dsh_core.storage.manager.MINIO_AVAILABLE", True),
+            patch("jkos_core.storage.manager.Minio"),
+            patch("jkos_core.storage.manager.MINIO_AVAILABLE", True),
         ):
             await manager.initialize()
 
@@ -521,7 +521,7 @@ class TestMinIOImportFallback:
         """模拟 minio 包不可导入时模块回退"""
         import sys
         import importlib
-        module = importlib.import_module("dsh_core.storage.manager")
+        module = importlib.import_module("jkos_core.storage.manager")
         saved = {name: sys.modules.get(name) for name in ("minio", "minio.error")}
         try:
             for name in ("minio", "minio.error"):

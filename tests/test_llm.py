@@ -1,9 +1,9 @@
 """LLM 路由单元测试（任务 0.3）— 纯 assert，兼容 pytest 与 m0_selftest 直跑"""
 import asyncio
 
-from dsh_core.llm import SimulatedProvider, build_llm_router
-from dsh_core.llm.base import LLMError, LLMMessage, LLMProvider, LLMResult
-from dsh_core.llm.router import CircuitConfig, LLMRouter
+from jkos_core.llm import SimulatedProvider, build_llm_router
+from jkos_core.llm.base import LLMError, LLMMessage, LLMProvider, LLMResult
+from jkos_core.llm.router import CircuitConfig, LLMRouter
 
 
 class FlakyProvider(LLMProvider):
@@ -214,7 +214,7 @@ def test_no_circuit_retries_failing_provider_each_call():
 
 def test_build_llm_router_wires_routes_and_circuit():
     """M-A3: build_llm_router 透传 routes + circuit 配置"""
-    from dsh_core.llm import LLMConfig
+    from jkos_core.llm import LLMConfig
 
     router = build_llm_router(
         config=LLMConfig(

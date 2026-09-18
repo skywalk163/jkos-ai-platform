@@ -29,15 +29,15 @@ def main():
 
     # 检查 FreeBSD 上的 mcp/server.py
     print("\n[2] 检查 FreeBSD 上的 mcp/server.py...")
-    run(client, "head -20 /data/dsh/code/dsh_core/mcp/server.py")
+    run(client, "head -20 /data/dsh/code/jkos_core/mcp/server.py")
     
     # 检查是否有 @app.get(\"/\")
     print("\n[3] 检查 / 路由...")
-    run(client, "grep -n '@app.get' /data/dsh/code/dsh_core/mcp/server.py | head -10")
+    run(client, "grep -n '@app.get' /data/dsh/code/jkos_core/mcp/server.py | head -10")
     
     # 检查 /health 路由
     print("\n[4] 检查 /health 路由...")
-    run(client, "grep -n '/health' /data/dsh/code/dsh_core/mcp/server.py | head -5")
+    run(client, "grep -n '/health' /data/dsh/code/jkos_core/mcp/server.py | head -5")
     
     client.close()
 

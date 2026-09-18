@@ -43,9 +43,9 @@ def main():
     print("\n[4] 验证安装...")
     run(client, f"{VENV_DIR}/bin/python -c 'import httpx; import pydantic; print(\"httpx:\", httpx.__version__, \"pydantic:\", pydantic.__version__)'")
     
-    # 验证 dsh_core
-    print("\n[5] 验证 dsh_core...")
-    run(client, f"cd {DSH_DIR}/code && {VENV_DIR}/bin/python -c 'import dsh_core; from dsh_core.mcp.server import PREDEFINED_TOOLS; from dsh_core.plugins import PluginRegistry; print(\"dsh_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
+    # 验证 jkos_core
+    print("\n[5] 验证 jkos_core...")
+    run(client, f"cd {DSH_DIR}/code && {VENV_DIR}/bin/python -c 'import jkos_core; from jkos_core.mcp.server import PREDEFINED_TOOLS; from jkos_core.plugins import PluginRegistry; print(\"jkos_core OK, MCP tools:\", len(PREDEFINED_TOOLS))'")
     
     # 创建 rc.d 服务
     print("\n[6] 创建 rc.d 服务...")
@@ -57,7 +57,7 @@ DSH_DIR="/data/dsh"
 DSH_VENV="/data/dsh/venv"
 DSH_CODE="/data/dsh/code"
 command="/usr/sbin/daemon"
-command_args="-f -r /bin/sh -c \\"export DSH_HOME=$DSH_DIR; export DSH_VENV=$DSH_VENV; export DSH_CODE=$DSH_CODE; export PYTHONPATH=$DSH_CODE; export TMPDIR=$DSH_DIR/tmp; cd $DSH_CODE; $DSH_VENV/bin/python dsh_core/cli.py mcp --port 3000\\""
+command_args="-f -r /bin/sh -c \\"export DSH_HOME=$DSH_DIR; export DSH_VENV=$DSH_VENV; export DSH_CODE=$DSH_CODE; export PYTHONPATH=$DSH_CODE; export TMPDIR=$DSH_DIR/tmp; cd $DSH_CODE; $DSH_VENV/bin/python jkos_core/cli.py mcp --port 3000\\""
 load_rc_config $name
 run_rc_command "$1"
 '''
@@ -66,7 +66,7 @@ run_rc_command "$1"
     
     # 测试启动
     print("\n[7] 测试启动 MCP Server (5秒)...")
-    run(client, f"cd {DSH_DIR}/code && TMPDIR={DSH_DIR}/tmp timeout 5 {VENV_DIR}/bin/python dsh_core/cli.py mcp --port 3000 2>&1 || echo 'Server started (timeout)'")
+    run(client, f"cd {DSH_DIR}/code && TMPDIR={DSH_DIR}/tmp timeout 5 {VENV_DIR}/bin/python jkos_core/cli.py mcp --port 3000 2>&1 || echo 'Server started (timeout)'")
     
     # 检查端口
     print("\n[8] 检查端口...")

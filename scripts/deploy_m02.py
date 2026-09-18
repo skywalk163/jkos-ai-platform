@@ -23,16 +23,16 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # (本地相对路径, 服务器绝对路径) —— 0.2 新增/修改文件
 FILES = [
     # 0.2 新增: 工作流引擎
-    ("dsh_core/workflow/__init__.py",  f"{CODE}/dsh_core/workflow/__init__.py"),
-    ("dsh_core/workflow/base.py",      f"{CODE}/dsh_core/workflow/base.py"),
-    ("dsh_core/workflow/nodes.py",     f"{CODE}/dsh_core/workflow/nodes.py"),
-    ("dsh_core/workflow/engine.py",    f"{CODE}/dsh_core/workflow/engine.py"),
+    ("jkos_core/workflow/__init__.py",  f"{CODE}/jkos_core/workflow/__init__.py"),
+    ("jkos_core/workflow/base.py",      f"{CODE}/jkos_core/workflow/base.py"),
+    ("jkos_core/workflow/nodes.py",     f"{CODE}/jkos_core/workflow/nodes.py"),
+    ("jkos_core/workflow/engine.py",    f"{CODE}/jkos_core/workflow/engine.py"),
     # 0.2 修改: db 层（autocommit 修复 + 常量导出 + list 反序列化）
-    ("dsh_core/db/__init__.py",        f"{CODE}/dsh_core/db/__init__.py"),
-    ("dsh_core/db/connection.py",      f"{CODE}/dsh_core/db/connection.py"),
-    ("dsh_core/db/repos.py",           f"{CODE}/dsh_core/db/repos.py"),
+    ("jkos_core/db/__init__.py",        f"{CODE}/jkos_core/db/__init__.py"),
+    ("jkos_core/db/connection.py",      f"{CODE}/jkos_core/db/connection.py"),
+    ("jkos_core/db/repos.py",           f"{CODE}/jkos_core/db/repos.py"),
     # 0.2 修改: CLI（去重 + workflow 命令）
-    ("dsh_core/cli.py",                f"{CODE}/dsh_core/cli.py"),
+    ("jkos_core/cli.py",                f"{CODE}/jkos_core/cli.py"),
     # 测试与自检
     ("tests/test_db.py",               f"{CODE}/tests/test_db.py"),
     ("tests/test_workflow.py",         f"{CODE}/tests/test_workflow.py"),
@@ -40,7 +40,7 @@ FILES = [
 ]
 
 ENV = f"cd {CODE} && PYTHONPATH={CODE} DSH_DB_PATH=/var/dsh/dsh.db"
-CLI = f"{ENV} {VENV} dsh_core/cli.py"
+CLI = f"{ENV} {VENV} jkos_core/cli.py"
 
 
 def run(client, cmd, timeout=90):
@@ -59,7 +59,7 @@ def main():
     print("[1] 连接成功")
 
     # 目录准备
-    rc, out, err = run(client, f"mkdir -p {CODE}/dsh_core/workflow {CODE}/tests {CODE}/scripts")
+    rc, out, err = run(client, f"mkdir -p {CODE}/jkos_core/workflow {CODE}/tests {CODE}/scripts")
     assert rc == 0, f"mkdir 失败: {err}"
 
     # 上传
@@ -128,7 +128,7 @@ def main():
     print("[5] MCP Server 健康检查 ...")
     rc, out, err = run(client, "curl -s -m 5 http://127.0.0.1:3000/health || echo 'HEALTH-CHECK-FAILED'")
     print(f"  /health: {out}")
-    rc, out, err = run(client, "pgrep -fl 'dsh_core.cli.py mcp' || echo 'NOT-RUNNING'")
+    rc, out, err = run(client, "pgrep -fl 'jkos_core.cli.py mcp' || echo 'NOT-RUNNING'")
     print(f"  process: {out}")
 
     client.close()

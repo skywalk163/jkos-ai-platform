@@ -31,15 +31,15 @@ def main():
     print("\n[2] 检查目录结构...")
     run(client, "ls -la /data/dsh/")
     run(client, "ls -la /data/dsh/code/ 2>/dev/null || echo 'code dir not found'")
-    run(client, "ls -la /data/dsh/code/dsh_core/ 2>/dev/null || echo 'dsh_core not found'")
+    run(client, "ls -la /data/dsh/code/jkos_core/ 2>/dev/null || echo 'jkos_core not found'")
     
     # 检查 cli.py 路径
     print("\n[3] 检查 cli.py...")
-    run(client, "ls -la /data/dsh/code/dsh_core/cli.py 2>/dev/null || echo 'cli.py not found'")
+    run(client, "ls -la /data/dsh/code/jkos_core/cli.py 2>/dev/null || echo 'cli.py not found'")
     
     # 检查 mcp/server.py
     print("\n[4] 检查 mcp/server.py...")
-    run(client, "ls -la /data/dsh/code/dsh_core/mcp/server.py 2>/dev/null || echo 'mcp/server.py not found'")
+    run(client, "ls -la /data/dsh/code/jkos_core/mcp/server.py 2>/dev/null || echo 'mcp/server.py not found'")
     
     # 检查 index.html
     print("\n[5] 检查 index.html...")

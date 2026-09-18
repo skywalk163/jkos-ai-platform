@@ -19,10 +19,10 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-import dsh_core.plugins.marketplace as marketplace_mod
-import dsh_core.plugins.registry as registry_mod
+import jkos_core.plugins.marketplace as marketplace_mod
+import jkos_core.plugins.registry as registry_mod
 
-from dsh_core.plugins.base import (
+from jkos_core.plugins.base import (
     AIPlugin,
     DeterministicPlugin,
     PluginBase,
@@ -36,12 +36,12 @@ from dsh_core.plugins.base import (
     PluginStatus,
     PluginType,
 )
-from dsh_core.plugins.marketplace import (
+from jkos_core.plugins.marketplace import (
     PluginMarketplace,
     PluginPackage,
     PluginSource,
 )
-from dsh_core.plugins.registry import (
+from jkos_core.plugins.registry import (
     EnhancedPluginRegistry,
     MarketplaceMetadata,
     PluginInfo,

@@ -12,8 +12,8 @@ import httpx
 import pytest
 import respx
 
-from dsh_core.llm import DeepSeekProvider, OpenAIProvider
-from dsh_core.llm.base import LLMError
+from jkos_core.llm import DeepSeekProvider, OpenAIProvider
+from jkos_core.llm.base import LLMError
 
 CHAT_COMPLETIONS = "/v1/chat/completions"
 
