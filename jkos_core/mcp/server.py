@@ -64,6 +64,22 @@ class MCPTool(BaseModel):
     output_schema: Dict[str, Any] = Field(default_factory=dict)
 
 
+def to_mcp_wire_tool(tool: "MCPTool") -> Dict[str, Any]:
+    """转换为 MCP 协议规范的线上工具定义
+
+    MCP 规范使用驼峰字段名（`inputSchema` / `outputSchema`），而本模块内部模型
+    用蛇形命名。标准端点 /mcp 必须输出规范字段名，否则外部 MCP 客户端
+    （如 deepseek-harness 的 dsh-mcp-client）在做 schema 校验时会拒绝整个工具列表，
+    表现为连接成功但工具不可见。
+    """
+    wire: Dict[str, Any] = {"name": tool.name, "description": tool.description}
+    if tool.input_schema:
+        wire["inputSchema"] = tool.input_schema
+    if tool.output_schema:
+        wire["outputSchema"] = tool.output_schema
+    return wire
+
+
 class MCPToolCall(BaseModel):
     """MCP 工具调用请求"""
     name: str
@@ -745,7 +761,8 @@ class MCPServer:
                     "jsonrpc": "2.0",
                     "id": request_id,
                     "result": {
-                        "tools": [t.model_dump() for t in visible],
+                        # 标准端点输出 MCP 规范字段名（inputSchema 等）
+                        "tools": [to_mcp_wire_tool(t) for t in visible],
                     },
                 }
             

@@ -24,13 +24,27 @@
 - 凭据由 JKOS 环境注入 harness 子进程，harness 不落密钥文件
 - **harness profile patch 生成**（`jkos_core/harness/toolbridge.py`）：`apply_profile_patch()` 写 `$DSH_HOME/profiles/sdk/cordis.patch.yml`，含两行
   - `- id: llm-deepseek` + `protocol: chat-completions`：公网 `api.deepseek.com` 只支持 Chat Completions，harness 默认 messages 协议会 404；**patch 行必须带既有行 id 才生效**（无 id 会被静默忽略）
-  - `- id: mcp-jkos`：ToolBridge 行，经 `streamable-http` 回调 JKOS `/mcp`（默认 `http://127.0.0.1:3000/mcp`）
+  - `- insert:` 包裹 `mcp-jkos` 行：ToolBridge 桥接行，经 `streamable-http` 回调 JKOS `/mcp`（默认 `http://127.0.0.1:3000/mcp`）——**新增条目必须用 insert 语义**
 
-### 🧪 测试与验收
-- 新增 **76 个用例**（config / gateway / routes / toolbridge / proxy）+ 3 个真实 runtime 集成用例（默认 skip，需 `JKOS_HARNESS_INTEGRATION=1`）
-- 回归：本地 py3.14 **865 passed / 3 skipped**；0.82 py3.12 **868 passed / 88%**、py3.11 **865 passed / 3 skipped**
-- **AC 验收**：AC-1（真实 LLM 闭环，`finish_reason=completed`）、AC-2、AC-4、AC-5、AC-6（Web UI 反代端到端 200 + 资源可达）、AC-7、AC-8 通过
-- **AC-3（工具桥接 e2e）未完成**：`dsh-mcp-client` 行写入 patch 后 harness 未建立 MCP 连接（JKOS `/mcp` 收到 0 次请求）。已排除协议不兼容（`/mcp` 的 `initialize` 正常、curl 直连可用），定位在 **profile 依赖闭包/manifest 层**（profile `package.json` 的 `dependencies` 为空，harness 规则要求插件行必须可解析）。详见 plan 的「实施后记」
+### 🧪 测试与验收（AC 全部通过）
+- 新增 **81 个用例**（config / gateway / routes / toolbridge / proxy）+ 3 个真实 runtime 集成用例（默认 skip，需 `JKOS_HARNESS_INTEGRATION=1`）
+- 回归：本地 py3.14 **870 passed / 3 skipped**；0.82 py3.12 与 py3.11 各 **870 passed / 3 skipped / 88%**
+- **AC-1**（0.82 真实 LLM 闭环，`finish_reason=completed`）、**AC-2**、**AC-3**（agent 可见 11 个 `mcp__jkos__*` 工具并成功调用 `dsh_session_list` 拿到真实返回）、**AC-4**、**AC-5**、**AC-6**（Web UI 反代 200 + 资源可达）、**AC-7**、**AC-8** 全部通过
+
+### 🐛 修复
+- **JKOS MCP 标准端点协议不合规**（`jkos_core/mcp/server.py`）：`/mcp` 的 `tools/list` 原用 `model_dump()` 输出蛇形字段 `input_schema`/`output_schema`，而 MCP 规范要求驼峰 `inputSchema`/`outputSchema`。外部 MCP 客户端（deepseek-harness 的 `dsh-mcp-client`）做 schema 校验时会拒绝**整个**工具列表，表现为「连接成功但工具不可见」。新增 `to_mcp_wire_tool()` 做字段映射，仅用于标准端点 `/mcp`；REST `/tools` 保持原字段名以兼容既有消费方。
+
+### 📌 harness 集成要点（实施期踩坑记录）
+- **Cordis patch 有两种语义**（见 `vendor/include/src/index.ts`）：
+  - **覆盖**：条目带 `id`，按 id 合并到**既有**条目；目标不存在报 `entry "<id>" not found`；**无 id 会被静默忽略**
+  - **新增**：条目包在 `insert:` 列表里（外层不带 id）
+  - 因此 LLM 行（覆盖 bundle 既有 `llm-deepseek`）带 id，ToolBridge 行（新增 mcp-client）用 `insert:`
+- **LLM 协议必配**：公网 `api.deepseek.com` 只支持 Chat Completions，harness `deepseek-official` 默认 messages 协议 → 不配 `protocol: chat-completions` 会 100% `HTTP_404`
+- **诊断利器**：`dsh --profile sdk --dump-config` 打印合成后的配置树，可直接看出 patch 是否生效
+- **Web UI 需令牌**：`dsh web` 启动打印 `?token=`（无令牌 401），令牌换 cookie 后 303 重定向，代理需内部跟随
+
+### ⚠️ 残留风险
+- JKOS `/mcp` 对匿名请求仍放行（`_visible_tools(None)` 返回全部工具，M14 既有设计）。ToolBridge 已用「缺 token 拒绝构建」缓解，但端点本身未强制鉴权——建议单独立项在 `/mcp` 对 harness 流量强制鉴权
 
 ## [M15] JKOS 代码层更名落地 - 2026-09-18
 

@@ -6,38 +6,41 @@
 > Iterations: 2 / 3
 > Author: skywalk
 > Last updated: 2026-09-18
-> 实施状态：AC-1/2/4/5/6/7/8 已通过；**AC-3 未完成**（见「实施后记」）
+> 实施状态：**AC-1~AC-8 全部通过**（AC-3 于第二轮修复后通过，见「实施后记」）
 
-## 实施后记（2026-09-19，实施中记录）
+## 实施后记（2026-09-19）
 
-### 已通过
+### AC 全部通过
 | AC | 证据 |
 |---|---|
 | AC-1 | 0.82 真实 runtime 集成测试 **3 passed**（`finish_reason == "completed"`）；sidecar 经 `dsh_bin` 指向源码构建 launcher，锁定版 SDK（`0.0.0.dev0`）与 runtime `0.1.6-alpha.1` 握手成功 |
 | AC-2 | `POST /sessions` 201 + SSE 转发 notification/turn/end（TestClient 用例）；真实 HTTP 侧由 `cov82_harness.sh` 覆盖 |
+| AC-3 | 0.82 e2e：agent 可见 **11 个** `mcp__jkos__*` 工具，并**成功调用** `mcp__jkos__dsh_session_list` 拿到 JKOS 真实返回（会话列表）；越租户拒绝与匿名可见性有单测覆盖 |
 | AC-4 | 401（无凭证）/ 身份前导写入 prompt（`identity_preamble`）用例通过 |
 | AC-5 | 429 + `Retry-After`，且按租户隔离用例通过 |
 | AC-6 | 0.82 端到端：直连 401 → 经 JKOS 代理 **200（29.5KB）**，`<base>` 改写为 `/harness/ui/`，主 JS 资源经代理 **200（566KB）** |
-| AC-7 | 双 venv 回归：py3.12 **868 passed / 88%**、py3.11 **865 passed / 3 skipped**；仅 3.11 正确 skip 集成用例（未装 SDK） |
-| AC-8 | 基线 789 → 865（+76 新增），无 skip 激增 |
+| AC-7 | 双 venv 回归：py3.12 与 py3.11 各 **870 passed / 3 skipped / 88%** |
+| AC-8 | 基线 789 → 870（+81 新增），无 skip 激增 |
 
-### AC-3 未完成 —— 精确卡点与新结论
-`@deepseek-ai/dsh-mcp-client` 行写入 `cordis.patch.yml` 后，harness **未建立 MCP 连接**（JKOS `/mcp` 收到 0 次请求，`mcp__jkos__*` 工具未注册）。
-
-已知与该卡点直接相关的两条硬事实：
-1. **patch 行必须带 `id` 才能覆盖 bundle 既有行** —— 实施中发现：LLM 行最初缺 `id`，导致 `protocol: chat-completions` 被静默忽略（仍走 messages 协议 → `HTTP_404`）；补上 `id: llm-deepseek` 后立刻成功。这是本 plan 未预见的关键机制（参考 `.deepseek-harness/snapshots/session/*/cordis.yml` 才知道既有行 id）。
-2. **新增插件行可能需先进入 profile 依赖闭包** —— profile 的 `package.json` 为 `"dependencies": {}`；deepseek-harness `AGENTS.md` 明确「Raw/Web `cordis.yml` bare plugins must appear in their resolver manifest's `dependencies`」，且外部插件需 `dsh plugin --profile sdk add`。这提示 mcp-client 行未被加载的原因在该闭包/manifest 层，而非 MCP 协议不兼容。
-
-**因此重新判定（推翻原判据）**：原 plan 把「协议不兼容」当作主因并准备了 B′（stdio shim）兜底；现有证据表明问题在**配置装配层**（row id / 依赖闭包），而JKOS `/mcp` 的 `initialize` 返回 `protocolVersion: 2024-11-05` 且 curl 直连正常，协议侧未见失败证据。**B′ 暂不应实施**——应先验证闭包路径，否则会在错误层面投入。
-
-**下一步（供后续 plan）**：① 在 profile `package.json` 声明 `@deepseek-ai/dsh-mcp-client` 依赖或用 `dsh plugin --profile sdk add` 安装后再验证；② 验证通过后重跑 AC-3 的越权用例；③ 若闭包路径仍失败，才落 B′ stdio shim。
+### AC-3 根因链（三个独立缺陷叠加，逐个排除）
+1. **patch 行语义误解**（第一轮失败）
+   最初把 mcp-client 行写成顶层 `- id: mcp-jkos`。`dsh --dump-config` 报 `patch: entry "mcp-jkos" not found` —— Cordis patch 是**按 id 合并到既有条目**的覆盖语义，不能新增。对照 `vendor/include/src/index.ts:76-124` 得知新增须用 `insert:` 包裹（外层不带 id）；官方示例 `snapshots/session/mcp-resources/cordis.yml` 佐证。
+2. **LLM 协议未切**（同期发现，独立问题）
+   公网 `api.deepseek.com` 只支持 Chat Completions，而 harness `deepseek-official` 默认 messages 协议 → 100% `HTTP_404`。须覆盖 `id: llm-deepseek` 加 `protocol: chat-completions`。（**覆盖行必须带 id**，否则被静默忽略——这是与第 1 点相反方向的同一个机制。）
+3. **JKOS 侧 MCP 协议不合规**（第二轮才暴露，真正的最后一块）
+   修好 1、2 后连接建立（`POST /mcp` 200）但工具仍不可见。定位到 `jkos_core/mcp/server.py` 的 `MCPTool` 用蛇形字段 `input_schema`/`output_schema`，而 **MCP 规范要求驼峰 `inputSchema`/`outputSchema`**；harness 的 MCP SDK 做 schema 校验时拒绝整个工具列表，表现为「连接成功但工具为空」。修复：新增 `to_mcp_wire_tool()` 做字段映射，仅用于标准端点 `/mcp`；REST `/tools` 保持原字段名（避免破坏既有消费方）。
 
 ### 其他实施偏差（相对原 plan）
-- **新增 LLM 接入行**（原 plan 无此步）：公网 `api.deepseek.com` 只支持 Chat Completions，而 harness `deepseek-official` 默认 messages 协议 → 不配置则 100% `HTTP_404`。已加入 `llm_provider_row()` / `render_profile_patch()`。
+- **新增 LLM 接入行**（原 plan 无此步）：见上文第 2 点。
+- **修复 JKOS MCP 协议不合规**（原 plan 未预见）：见上文第 3 点，改动 `jkos_core/mcp/server.py`（M16 范围外文件，但为 AC-3 必需）。
 - **Web UI 令牌注入**（原 plan 仅列为 open question）：实测 `dsh web` 要求 `?token=`（无令牌 401），且令牌换 cookie 后 303 重定向。已在 proxy 内实现「令牌注入 + 内部跟随重定向」。
 - **`mcp_url` 默认值修正**：原写 `8001/mcp`（API 服务），实际 `/mcp` 由 MCP 服务提供（默认 3000）。
 - **测试自纠**：集成用例原先只断言「收到 `turn/end`」，被 `finish_reason=error` 的失败轮掩盖（AC-1 曾假通过）。已改为断言 `finish_reason == "completed"` 并透出错误。
-- **顺手清理**：`bootstrap.py` 重复 import 行（Critic 曾建议单拆 commit，实际因处于本次编辑区间一并移除）。
+- **顺手清理**：`bootstrap.py` 重复 import 行。
+
+### 残留风险（未在本次解决）
+- **JKOS `/mcp` 匿名放行**：`_visible_tools(None)` 返回**全部**工具（M14 既有设计）。ToolBridge 的缓解是**缺 token 时拒绝构建配置**（`mcp_client_row` 抛 `ToolBridgeConfigError`），保证 harness 连接必带 token；但 JKOS 端点本身对匿名请求仍不拒绝。若需彻底封堵，应在 `/mcp` 对 harness 流量强制鉴权（属 M14 范围，建议单独议题）。
+- **harness developer preview**：版本锁定 `65e04a5a07`；升级需重跑 AC-1/AC-3 冒烟。
 
 ## Requirements summary
 

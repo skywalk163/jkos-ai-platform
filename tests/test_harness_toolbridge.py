@@ -130,13 +130,23 @@ class TestProfilePatch:
         assert "@deepseek-ai/dsh-llm-deepseek" in text
         assert "protocol: chat-completions" in text
 
+    def test_render_uses_insert_for_new_row(self, config):
+        """新增条目必须用 insert 语义：Cordis patch 直接写带 id 的新条目会报
+        `entry "<id>" not found`（patch 是按 id 合并到既有条目）"""
+        text = render_profile_patch(config)
+
+        assert "- insert:" in text
+        assert "    - id: mcp-jkos" in text
+        # 不得出现裸的顶层 mcp-jkos 条目（那会被当作覆盖 patch 而失败）
+        assert "\n- id: mcp-jkos" not in text
+
     def test_render_fields(self, config):
         text = render_profile_patch(config)
 
-        assert "name: '@deepseek-ai/dsh-mcp-client'" in text
-        assert "transport: streamable-http" in text
-        assert f"url: {config.mcp_url}" in text
-        assert "failOnStartupError: true" in text
+        assert "      name: '@deepseek-ai/dsh-mcp-client'" in text
+        assert "        transport: streamable-http" in text
+        assert f"        url: {config.mcp_url}" in text
+        assert "        failOnStartupError: true" in text
 
     def test_apply_writes_patch(self, config, tmp_path):
         path = apply_profile_patch(config)
@@ -151,6 +161,58 @@ class TestProfilePatch:
 
         assert first == second
         assert first.read_text(encoding="utf-8").count("dsh-mcp-client") == 1
+
+
+class TestMcpWireFormat:
+    """/mcp 标准端点的协议规范字段名 —— AC-3 的前置条件
+
+    MCP 规范用驼峰（inputSchema），JKOS 内部模型用蛇形（input_schema）。
+    若标准端点输出蛇形字段，外部 MCP 客户端会拒绝整个工具列表，
+    表现为「连接成功但工具不可见」（实测 harness dsh-mcp-client 即如此）。
+    """
+
+    def test_wire_tool_uses_camel_case(self):
+        from jkos_core.mcp.server import MCPTool, to_mcp_wire_tool
+
+        tool = MCPTool(name="t", description="d", input_schema={"type": "object"})
+
+        wire = to_mcp_wire_tool(tool)
+
+        assert wire["inputSchema"] == {"type": "object"}
+        assert "input_schema" not in wire
+
+    def test_wire_tool_omits_empty_schemas(self):
+        from jkos_core.mcp.server import MCPTool, to_mcp_wire_tool
+
+        wire = to_mcp_wire_tool(MCPTool(name="t", description="d"))
+
+        assert "inputSchema" not in wire
+        assert "outputSchema" not in wire
+
+    def test_mcp_endpoint_returns_spec_field_names(self):
+        """标准端点 /mcp 必须输出 inputSchema（而非 input_schema）"""
+        server = MCPServer()
+        with TestClient(server.app) as client:
+            resp = client.post("/mcp", json={
+                "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {},
+            })
+
+        tools = resp.json()["result"]["tools"]
+
+        assert tools, "标准端点应返回工具列表"
+        assert all("inputSchema" in t for t in tools)
+        assert all("input_schema" not in t for t in tools)
+
+    def test_rest_endpoint_keeps_snake_case(self):
+        """REST /tools 为非标接口，保持原字段名（避免破坏既有消费方）"""
+        server = MCPServer()
+        with TestClient(server.app) as client:
+            resp = client.get("/tools")
+
+        tools = resp.json()["tools"]
+
+        assert tools
+        assert all("input_schema" in t for t in tools)
 
 
 class TestVisibilitySemantics:

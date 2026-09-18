@@ -88,28 +88,40 @@ def render_profile_patch(config: HarnessConfig,
                          server_name: str = MCP_SERVER_NAME) -> str:
     """渲染 cordis.patch.yml 内容（LLM 接入行 + ToolBridge 行）
 
-    使用 harness 支持的 !!js / apiKeyEnv 引用环境变量，
-    因此 patch 文件中**不含任何密钥**。
+    Cordis patch 有两种语义（见 vendor/include/src/index.ts）：
+    - 覆盖：条目带 `id`，按 id 合并到**既有**条目；目标不存在会报
+      `entry "<id>" not found`（这也是为什么不能直接写新条目）
+    - 新增：条目包在 `insert:` 列表里（外层不带 id），追加为新条目
+
+    因此 LLM 行走覆盖语义（bundle 已挂载 `llm-deepseek`），
+    ToolBridge 行走 insert 语义（bundle 不含 mcp-client，需新增）。
+
+    密钥经环境变量引用（DEEPSEEK_API_KEY / JKOS_MCP_TOKEN），本文件不含密钥。
     """
     base_url_line = f"    baseURL: {config.base_url}\n" if config.base_url else ""
     return (
         "# 由 JKOS 生成（M16 智能中枢）——请勿手工编辑；\n"
         f"# 密钥经环境变量注入（DEEPSEEK_API_KEY / {TOKEN_ENV_VAR}），本文件不含密钥。\n"
+        "\n"
+        "# 1) LLM 接入：覆盖 bundle 既有行（必须带 id 才能按 id 合并）\n"
         "- id: " + LLM_ROW_ID + "\n"
         "  name: '@deepseek-ai/dsh-llm-deepseek'\n"
         "  config:\n"
         "    apiKeyEnv: DEEPSEEK_API_KEY\n"
         f"    protocol: {config.llm_protocol}\n"
         f"{base_url_line}"
-        f"- id: mcp-{server_name}\n"
-        "  name: '@deepseek-ai/dsh-mcp-client'\n"
-        "  config:\n"
-        f"    serverName: {server_name}\n"
-        f"    transport: {MCP_TRANSPORT}\n"
-        f"    url: {config.mcp_url}\n"
-        "    headers:\n"
-        "      Authorization: !!js '`Bearer ${process.env." + TOKEN_ENV_VAR + "}`'\n"
-        "    failOnStartupError: true\n"
+        "\n"
+        "# 2) ToolBridge：新增行（insert 语义，外层不带 id）\n"
+        "- insert:\n"
+        f"    - id: mcp-{server_name}\n"
+        "      name: '@deepseek-ai/dsh-mcp-client'\n"
+        "      config:\n"
+        f"        serverName: {server_name}\n"
+        f"        transport: {MCP_TRANSPORT}\n"
+        f"        url: {config.mcp_url}\n"
+        "        headers:\n"
+        "          Authorization: !!js '`Bearer ${process.env." + TOKEN_ENV_VAR + "}`'\n"
+        "        failOnStartupError: true\n"
     )
 
 
