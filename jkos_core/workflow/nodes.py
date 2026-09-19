@@ -138,6 +138,30 @@ except ImportError:
     pass
 
 
+# ─── M18.1 酒厂（案例C）惰性挂载 ───
+# 注意：winery.workflows.production 模块级 `from jkos_core.workflow.nodes
+# import WORKFLOW_REGISTRY`，故此处必须放在 WORKFLOW_REGISTRY 定义之后，
+# 否则会在部分初始化时抛 ImportError 被静默吞掉、导致挂载失效。
+#
+# 节点采用「先注册优先」（setdefault）而非 update：酒厂营销/危机工作流显式
+# 复用 H1 内容管线与 H2 舆情组件，共享键 content_generator / content_reviewer /
+# sentiment_monitor / sentiment_analyzer / crisis_alerter 保留媒体（平台契约）
+# 处理器，酒厂仅补充 own-only 节点。
+
+try:
+    from tenants.winery.nodes import WINERY_NODES
+    for _name, _handler in WINERY_NODES.items():
+        BUILTIN_NODES.setdefault(_name, _handler)
+except ImportError:
+    pass
+
+try:
+    from tenants.winery.workflows import WINERY_WORKFLOWS
+    WORKFLOW_REGISTRY.update(WINERY_WORKFLOWS)
+except ImportError:
+    pass
+
+
 def get_workflow(code: str) -> WorkflowDef:
     definition = WORKFLOW_REGISTRY.get(code)
     if definition is None:
