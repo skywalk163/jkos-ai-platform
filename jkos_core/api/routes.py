@@ -70,8 +70,29 @@ class MessageSendRequest(BaseModel):
 
 # ─── API 路由 ───
 
-def create_api_router(engine: Optional[WorkflowEngine] = None) -> APIRouter:
-    """创建 API 路由（engine 缺省时审批路由返回 503）"""
+def _engine_provider_of(engine: Any, explicit: Any) -> Any:
+    """解析「按租户取引擎」的提供者（M18.2 运行时路由）
+
+    显式参数优先；否则从 `engine.comps`（真实 AppComponents）取 `engine_for`。
+    仅接受 AppComponents 实例，避免测试中的 Mock/SimpleNamespace 被误判。
+    """
+    if explicit is not None:
+        return explicit
+    if engine is None:
+        return None
+    from jkos_core.bootstrap import AppComponents
+
+    comps = getattr(engine, "comps", None)
+    return comps.engine_for if isinstance(comps, AppComponents) else None
+
+
+def create_api_router(engine: Optional[WorkflowEngine] = None, *,
+                      engine_provider: Any = None) -> APIRouter:
+    """创建 API 路由（engine 缺省时审批路由返回 503）
+
+    engine_provider：可选的 `f(tenant_code) -> Optional[WorkflowEngine]`；
+    返回引擎即按租户路由（L2 物理隔离），返回 None 则回落单引擎。
+    """
     router = APIRouter(prefix="/api/v1", tags=["API"])
 
     # ─── 健康检查 ───
@@ -191,7 +212,20 @@ def create_api_router(engine: Optional[WorkflowEngine] = None) -> APIRouter:
 
     # ─── 审批（M1 任务 1.4，§8.2）───
 
-    def _require_engine() -> WorkflowEngine:
+    def _tenant_engine(ctx: Any) -> Optional[WorkflowEngine]:
+        """按租户解析引擎；未启用 L2 隔离（或该租户未隔离）时返回 None"""
+        provider = _engine_provider_of(engine, engine_provider)
+        if provider is None or ctx is None:
+            return None
+        tenant_code = getattr(ctx, "tenant_code", None)
+        if not tenant_code:
+            return None
+        return provider(tenant_code)
+
+    def _require_engine(ctx: Any = None) -> WorkflowEngine:
+        tenant_engine = _tenant_engine(ctx)
+        if tenant_engine is not None:
+            return tenant_engine
         if engine is None:
             raise HTTPException(status_code=503, detail="工作流引擎未装配")
         return engine
@@ -203,9 +237,12 @@ def create_api_router(engine: Optional[WorkflowEngine] = None) -> APIRouter:
         ctx: Any = Depends(get_tenant_context),
     ):
         """待审批任务列表（仅返回当前租户可见范围）"""
-        eng = _require_engine()
+        eng = _require_engine(ctx)
         # 租户隔离：非 admin 只能看本租户任务
         code = tenant_code or ctx.tenant_code
+        if _tenant_engine(ctx) is not None and code != ctx.tenant_code:
+            # L2 物理隔离：租户数据落在独立库，不支持跨租户查询
+            raise HTTPException(status_code=403, detail="L2 隔离模式下不支持跨租户查询")
         if "admin" not in (ctx.roles or ()) and tenant_code and tenant_code != ctx.tenant_code:
             raise HTTPException(status_code=403, detail="无权查看其他租户的审批任务")
         try:
@@ -221,7 +258,7 @@ def create_api_router(engine: Optional[WorkflowEngine] = None) -> APIRouter:
         ctx: Any = Depends(get_tenant_context),
     ):
         """提交审批决策：通过 → 流程继续；驳回 → 流程取消（§8.2.1）"""
-        eng = _require_engine()
+        eng = _require_engine(ctx)
         if req.decision not in ("approve", "reject"):
             raise HTTPException(status_code=400, detail="decision 必须是 approve 或 reject")
         approver = req.approver or ctx.user_id
@@ -242,14 +279,15 @@ def create_api_router(engine: Optional[WorkflowEngine] = None) -> APIRouter:
     async def sweep_approval_timeouts(ctx: Any = Depends(get_tenant_context)):
         """审批超时扫描（§8.2.2）：low 自动通过 / medium 升级 / high 自动驳回。
         由运维定时器周期调用。"""
-        eng = _require_engine()
+        eng = _require_engine(ctx)
         handled = await eng.sweep_timeouts()
         return {"handled": handled}
 
     return router
 
 
-def create_app(engine: Optional[WorkflowEngine] = None) -> FastAPI:
+def create_app(engine: Optional[WorkflowEngine] = None, *,
+               engine_provider: Any = None) -> FastAPI:
     """创建 FastAPI 应用（engine 缺省时审批路由返回 503）"""
     from jkos_core.auth.dependencies import configure_auth
 
@@ -266,7 +304,7 @@ def create_app(engine: Optional[WorkflowEngine] = None) -> FastAPI:
     else:
         # 无 engine 时，审批路由返回 503（由 _require_engine 处理）
         pass
-    router = create_api_router(engine=engine)
+    router = create_api_router(engine=engine, engine_provider=engine_provider)
     app.include_router(router)
     # M13: 工具注册 / 发现 / 版本管理 / 市场路由
     from jkos_core.api.tool_routes import register_tool_routes

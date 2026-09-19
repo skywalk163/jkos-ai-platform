@@ -12,13 +12,20 @@ M3 新增：
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+import os
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from jkos_core.audit import AuditLogger
 from jkos_core.auth.dependencies import AuthConfig, JWTManager, configure_auth
 from jkos_core.cache.manager import CacheManager, MemoryCache
 from jkos_core.db import ApprovalTaskRepo, Database, DatabaseConfig, LlmUsageRepo, TenantRepo, WorkflowRepo
+from jkos_core.db.tenant_schema import (
+    IsolationLevel,
+    TenantIsolationConfig,
+    TenantSchemaManager,
+    create_tenant_schema_manager,
+)
 from jkos_core.llm import LLMRouter, build_llm_router
 from jkos_core.mcp.registry import ToolRegistry, get_registry
 from jkos_core.metrics.collector import DSHMetrics, get_metrics
@@ -45,11 +52,101 @@ class AppComponents:
     metrics: Optional[DSHMetrics] = None  # M3 指标收集器
     tools: Optional[ToolRegistry] = None  # M13 工具注册表
     harness: Optional["HarnessGateway"] = None  # M16 智能中枢网关（默认关闭）
+    tenant_schemas: Optional[TenantSchemaManager] = None  # M18.2 L2 物理隔离（默认关闭）
+    _engines: Dict[str, Any] = field(default_factory=dict, repr=False)  # 租户码 -> 租户专属引擎
 
     def close(self) -> None:
         if self.harness is not None:
             self.harness.close()
+        if self.tenant_schemas is not None:
+            self.tenant_schemas.close_all()
+        self._engines.clear()
         self.db.close()
+
+    # ─── M18.2 按租户路由 ───
+
+    def database_for(self, tenant_code: str) -> Database:
+        """按租户取数据库：L2 已隔离 → 独立 Database；否则 → 主库"""
+        if self.tenant_schemas is None:
+            return self.db
+        config = self.tenant_schemas.get_config_by_code(tenant_code)
+        if config is None:
+            return self.db
+        return self.tenant_schemas.get_tenant_database(config.tenant_id) or self.db
+
+    def engine_for(self, tenant_code: str) -> Optional["WorkflowEngine"]:
+        """按租户取工作流引擎（M18.2 运行时路由）
+
+        未启用 L2 隔离（或该租户未隔离）时返回 None，调用方回落单引擎；
+        启用时按租户懒建引擎（独立 Database + 仓储，共享 LLM/通知/JWT），
+        并按租户码缓存复用。
+        """
+        if self.tenant_schemas is None:
+            return None
+        db = self.database_for(tenant_code)
+        if db is self.db:
+            return None
+        engine = self._engines.get(tenant_code)
+        if engine is None:
+            from types import SimpleNamespace
+
+            from jkos_core.workflow import WorkflowEngine
+
+            tenant_comps = SimpleNamespace(
+                db=db,
+                tenants=TenantRepo(db),
+                workflows=WorkflowRepo(db),
+                approvals=ApprovalTaskRepo(db),
+                audit=AuditLogger(db),
+                llm=self.llm,
+                jwt=self.jwt,
+                notify=self.notify,
+            )
+            engine = WorkflowEngine(tenant_comps)
+            register_tenant_workflows(engine)
+            self._engines[tenant_code] = engine
+            logger.info("租户 %s 专属引擎已建立（独立库）", tenant_code)
+        return engine
+
+
+def register_tenant_workflows(engine: Any) -> None:
+    """注册三案例工作流定义（幂等）
+
+    - dev：需显式注册（`tenants.dev.workflows.register`）；
+    - media / winery：由 `jkos_core.workflow.nodes` 模块级惰性挂载，无需重复注册。
+    """
+    try:
+        from tenants.dev.workflows import register as register_dev_workflows
+        register_dev_workflows(engine)
+        logger.info("✓ dev 工作流定义已注册（D1 代码审查）")
+    except ImportError as e:
+        logger.warning("dev 工作流未注册: %s", e)
+
+
+def wire_tenant_isolation(db: Database, manager: TenantSchemaManager,
+                          config: TenantIsolationConfig) -> int:
+    """按租户表/白名单建立 L2 独立库，返回成功接入的租户数
+
+    单个租户建立失败即降级 L1（注销注册项并记错误日志），不阻塞启动。
+    """
+    wired = 0
+    for row in TenantRepo(db).list_all():
+        code = row["code"]
+        if config.codes:
+            is_l2 = code in config.codes
+        else:
+            is_l2 = (row.get("isolation_level") or "").upper() == IsolationLevel.L2.value
+        if not is_l2:
+            continue
+        try:
+            manager.register_tenant(row["id"], code, IsolationLevel.L2)
+            manager.create_schema(row["id"])
+            wired += 1
+            logger.info("租户 %s 已接入 L2 物理隔离", code)
+        except Exception as exc:
+            logger.error("租户 %s L2 隔离建立失败，降级 L1: %s", code, exc)
+            manager.unregister_tenant(row["id"])
+    return wired
 
 
 def build_components(db_path: Optional[str] = None, init_auth: bool = True) -> AppComponents:
@@ -110,6 +207,18 @@ def build_components(db_path: Optional[str] = None, init_auth: bool = True) -> A
         harness = get_gateway(harness_config)
         logger.info("智能中枢已启用：%s", harness_config.describe())
 
+    # M18.2: 多租户 L2 物理隔离（默认关闭，由 JKOS_TENANT_L2_ENABLED 控制）
+    isolation_config = TenantIsolationConfig.from_env()
+    tenant_schemas = None
+    if isolation_config.enabled:
+        data_dir = isolation_config.data_dir or os.path.join(
+            os.path.dirname(os.path.abspath(config.path)), "tenants")
+        tenant_schemas = create_tenant_schema_manager(
+            f"sqlite:///{config.path}", data_dir=data_dir)
+        wired = wire_tenant_isolation(db, tenant_schemas, isolation_config)
+        logger.info("多租户隔离已启用：%s（已接入 %d 个租户）",
+                    isolation_config.describe(), wired)
+
     return AppComponents(
         db=db, tenants=TenantRepo(db), workflows=WorkflowRepo(db),
         audit=audit, llm=llm, jwt=jwt_manager,
@@ -119,4 +228,5 @@ def build_components(db_path: Optional[str] = None, init_auth: bool = True) -> A
         metrics=metrics,
         tools=tools,
         harness=harness,
+        tenant_schemas=tenant_schemas,
     )

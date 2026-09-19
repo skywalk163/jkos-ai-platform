@@ -33,18 +33,13 @@ logger = logging.getLogger("dsh.cli")
 # ─── 命令实现 ───
 
 def _build_engine():
-    """组装工作流引擎（M1）：基础组件 + 审批仓储 + dev 工作流定义"""
-    from jkos_core.bootstrap import build_components
+    """组装工作流引擎（M1）：基础组件 + 审批仓储 + 租户工作流定义"""
+    from jkos_core.bootstrap import build_components, register_tenant_workflows
     from jkos_core.workflow import WorkflowEngine
 
     comps = build_components()
     engine = WorkflowEngine(comps)
-    try:
-        from tenants.dev.workflows import register as register_dev_workflows
-        register_dev_workflows(engine)
-        logger.info("✓ dev 工作流定义已注册（D1 代码审查）")
-    except ImportError as e:
-        logger.warning("dev 工作流未注册: %s", e)
+    register_tenant_workflows(engine)
     return engine
 
 

@@ -42,6 +42,15 @@ from jkos_core.db.repos import (
 )
 from jkos_core.db.ulid import is_ulid, new_ulid
 from jkos_core.db.schema import MIGRATIONS
+from jkos_core.db.tenant_schema import (
+    CrossTenantQuery,
+    IsolationLevel,
+    TenantIsolationConfig,
+    TenantSchemaConfig,
+    TenantSchemaManager,
+    create_cross_tenant_query,
+    create_tenant_schema_manager,
+)
 
 __all__ = [
     "ConnectionPool",
@@ -50,6 +59,14 @@ __all__ = [
     "utc_now",
     "new_ulid",
     "is_ulid",
+    # 多租户 L2 隔离（M18.2）
+    "TenantSchemaManager",
+    "TenantSchemaConfig",
+    "TenantIsolationConfig",
+    "IsolationLevel",
+    "CrossTenantQuery",
+    "create_tenant_schema_manager",
+    "create_cross_tenant_query",
     "TenantRepo",
     "WorkflowRepo",
     "AuditRepo",
