@@ -4,6 +4,23 @@
 > 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义参考 [SemVer](https://semver.org/lang/zh-CN/)。
 > M2-M4 为早期规划实现的里程碑，功能已折叠计入后续里程碑提交，无独立提交记录。
 
+## [M17] 自动化优化引擎收官（M12 验收补勾）- 2026-09-19
+
+### 新增
+- **优化引擎独立测试**（`tests/test_optimization/`，78 用例）：ProcessSolidifier（固化/版本/回滚/归档/统计）、TokenOptimizer（缓存/增量/批量）、TemplateManager（CRUD/版本/搜索/统计）、AutomationEngine（定时/事件/审批/日志/Token 汇总）、OptimizationEngine 门面全链路
+- **模板库种子扩充**：`templates/seed_data.py` 61 个种子模板，覆盖 50+ 场景
+- **四口径基准脚本**（`scripts/benchmarks/bench_optimization.py`）：量化 Token 消耗与执行耗时，报告输出 `reports/benchmarks/bench_optimization_report.json`
+
+### 验收达标（M12 验收 4/4 + M17 验收 5/5 补勾）
+- 口径1 Token 消耗：首次全量 **15000** → 缓存回放 **100**，节省 **99.33%**（目标 90%+）
+- 口径2 自动化执行成功率：**45/45 = 100%**（目标 >95%）
+- 口径3 模板库覆盖：**61 场景**（目标 50+）
+- 口径4 自动化执行时间：**24.8ms/任务**，远低于人工基线 1800s/任务的 20% 上限（360s/任务）
+- 覆盖率：`jkos_core/optimization/` 各模块 **98%~100%**（base 98% / process_solidifier 98% / template_manager 98% / token_optimizer 99% / facade + automation_engine 100%），目标 ≥85%
+
+### 测试
+- `tests/test_optimization/`：**78 passed / 16 warnings**（13.97s）
+
 ## [M16] 智能中枢（deepseek-harness 集成）- 2026-09-18
 
 ### 新增

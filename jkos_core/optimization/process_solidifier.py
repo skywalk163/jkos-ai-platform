@@ -156,17 +156,22 @@ class ProcessSolidifier:
         self._connect()
         if version is not None:
             row = self._conn.execute(
-                "SELECT data FROM process_store WHERE process_id=? AND version=?",
+                "SELECT data, status FROM process_store WHERE process_id=? AND version=?",
                 (process_id, version),
             ).fetchone()
         else:
-            sql = "SELECT data FROM process_store WHERE process_id=?"
+            sql = "SELECT data, status FROM process_store WHERE process_id=?"
             args: tuple = (process_id,)
             if active_only:
                 sql += " AND status='active'"
             sql += " ORDER BY version DESC LIMIT 1"
             row = self._conn.execute(sql, args).fetchone()
-        return json.loads(row["data"]) if row else None
+        if row is None:
+            return None
+        # 行级 status 列是权威值（归档/激活由 _archive_sync 维护），覆盖 data JSON 中可能滞后的旧值
+        d = json.loads(row["data"])
+        d["status"] = row["status"]
+        return d
 
     def _all_sync(self) -> List[Dict[str, Any]]:
         self._connect()

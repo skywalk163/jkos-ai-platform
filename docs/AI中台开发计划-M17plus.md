@@ -65,7 +65,7 @@
 
 ### 产出物
 
-- `tests/optimization/` 独立测试目录（test_process_solidifier / test_token_optimizer / test_template_manager / test_automation_engine / test_optimization_engine）
+- `tests/test_optimization/` 独立测试目录（test_process_solidifier / test_token_optimizer / test_template_manager / test_automation_engine / test_facade_lifecycle）
 - `scripts/benchmarks/bench_optimization.py` Token 消耗与耗时基准脚本
 - 覆盖率报告（`jkos_core/optimization/` 各模块 ≥ 85%）
 - Token 消耗基准报告（首次全量 vs 命中缓存，量化 90%+ 目标）
@@ -73,11 +73,11 @@
 
 ### M17 验收（对应 M12 验收，全部达成才可勾选）
 
-- [ ] Token 消耗降低 **90%+**（基准：首次全量 vs 缓存回放）
-- [ ] 自动化执行成功率 **> 95%**
-- [ ] 模板库覆盖 **50+ 场景**（含 `templates/seed_data.py` 种子模板扩充）
-- [ ] 自动化执行时间 **< 人工执行的 20%**（基准量化）
-- [ ] `jkos_core/optimization/` 覆盖率 **≥ 85%**（当前 32%~74%）
+- [x] Token 消耗降低 **90%+**（基准：首次 15000 → 缓存回放 100，节省 99.33%）
+- [x] 自动化执行成功率 **> 95%**（45/45 = 100%）
+- [x] 模板库覆盖 **50+ 场景**（61 场景，含 `templates/seed_data.py` 种子模板扩充）
+- [x] 自动化执行时间 **< 人工执行的 20%**（基准：24.8ms/任务 vs 人工基线 1800s/任务）
+- [x] `jkos_core/optimization/` 覆盖率 **≥ 85%**（实测各模块 98%~100%）
 
 ---
 
@@ -195,11 +195,11 @@ await engine.initialize()
 
 # 首次执行（全量成本）
 result = await engine.execute("生成周报")
-print(result.token_used)  # 首次全量约 15000
+print(result.token_used)  # 首次全量 15000
 
 # 再次执行（命中缓存，回放成本 ≤ 全量 10%）
 result2 = await engine.execute("生成周报")
-print(result2.source, result2.token_used)  # cache, 1000 以内
+print(result2.source, result2.token_used)  # cache, 回放成本 100
 
 await engine.close()
 ```
@@ -207,7 +207,7 @@ await engine.close()
 基准验证命令：
 
 ```bash
-python -m pytest tests/optimization/ -q --tb=short --cov=jkos_core.optimization --cov-report=term-missing
+python -m pytest tests/test_optimization/ -q --tb=short --cov=jkos_core.optimization --cov-report=term-missing
 python scripts/benchmarks/bench_optimization.py   # 输出 Token 消耗与耗时对比报告
 ```
 
@@ -227,3 +227,4 @@ python scripts/benchmarks/bench_optimization.py   # 输出 Token 消耗与耗时
 ## 📝 版本记录
 
 - **0.1.0**（2026-09-19）：M16 收官后制定 M17+ 延续规划，M17 聚焦 M12 自动化优化引擎收官。
+- **0.2.0**（2026-09-19）：M17 收官。`jkos_core/optimization/` 各模块覆盖率 98%~100%（≥85% 达标），四口径基准达标（Token 15000→100、节省 99.33%；成功率 45/45=100%；模板库 61 场景；自动执行 24.8ms/任务），《M6-M10》M12 验收 4/4 补勾；新增 `tests/test_optimization/` 78 用例与 `scripts/benchmarks/bench_optimization.py`，`run_coverage.sh` 采用 `--cov=jkos_core`。

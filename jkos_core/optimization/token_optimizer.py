@@ -30,7 +30,11 @@ def estimate_tokens(text: str) -> int:
     if not text:
         return 0
     cjk = sum(1 for ch in text if "\u4e00" <= ch <= "\u9fff")
-    words = len([w for w in text.split() if w.strip()])
+    # 中文按字符计数；英文按词计数，但纯中文 token（如“你好”）不再重复计为英文词
+    words = len([
+        w for w in text.split()
+        if w.strip() and not all("\u4e00" <= ch <= "\u9fff" for ch in w)
+    ])
     return max(1, cjk + words)
 
 

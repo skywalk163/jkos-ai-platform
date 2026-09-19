@@ -69,3 +69,86 @@ async def test_approve_flow_for_novel_task(engine):
         assert approved.success is True
     finally:
         await engine.close()
+
+
+# ---------- M17 覆盖补齐：调度 / 事件 / 日志 / 统计转发 ----------
+
+@pytest.mark.asyncio
+async def test_schedule_forwarders(engine):
+    """add_schedule / schedules / remove_schedule 转发到自动化引擎。"""
+    await engine.initialize()
+    try:
+        sched = engine.add_schedule("生成周报", interval_seconds=3600)
+        assert sched.interval_seconds == 3600
+        assert [s.schedule_id for s in engine.schedules()] == [sched.schedule_id]
+        assert engine.remove_schedule("s-missing-001") is False
+        assert engine.remove_schedule(sched.schedule_id) is True
+        assert engine.schedules() == []
+    finally:
+        await engine.close()
+
+
+@pytest.mark.asyncio
+async def test_run_due_schedules_forwarder(engine):
+    """刚登记的调度未到期时不触发执行。"""
+    await engine.initialize()
+    try:
+        engine.add_schedule("生成周报", interval_seconds=3600)
+        results = await engine.run_due_schedules()
+        assert results == []
+    finally:
+        await engine.close()
+
+
+@pytest.mark.asyncio
+async def test_event_forwarders(engine):
+    """register_event / trigger_event 转发；未绑定事件返回空。"""
+    await engine.initialize()
+    try:
+        engine.register_event("on_deploy", "生成周报")
+        results = await engine.trigger_event("on_deploy")
+        assert len(results) == 1 and results[0].success is True
+        assert await engine.trigger_event("on_missing") == []
+    finally:
+        await engine.close()
+
+
+@pytest.mark.asyncio
+async def test_log_stats_forwarders(engine):
+    """execution_log / usage_stats / cached_count 可追溯。"""
+    await engine.initialize()
+    try:
+        res = await engine.execute("生成周报")
+        log = engine.execution_log()
+        assert any(x.run_id == res.run_id for x in log)
+        stats = await engine.usage_stats()
+        assert stats["runs"] >= 1
+        assert engine.cached_count() >= 1
+    finally:
+        await engine.close()
+
+
+@pytest.mark.asyncio
+async def test_has_template_negative_branch(engine):
+    """语义未命中时 has_template 返回 False。"""
+    await engine.initialize()
+    try:
+        assert await engine.has_template("zzzfjlzmissing20260701qq") is False
+    finally:
+        await engine.close()
+
+
+@pytest.mark.asyncio
+async def test_approve_rejected_through_facade(engine):
+    """门面层审批拒绝：状态 rejected 且待办清空。"""
+    await engine.initialize()
+    try:
+        task = "fjlz-m12-reject-20260701 全息投影数据可视化方案"
+        res = await engine.execute(task, require_approval=True)
+        assert res.success is False
+        rejected = await engine.approve(res.run_id, approved=False)
+        assert rejected is not None
+        assert rejected.success is False
+        assert engine.pending_tasks == []
+    finally:
+        await engine.close()

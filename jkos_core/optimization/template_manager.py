@@ -34,10 +34,6 @@ STEP_COST = 20
 # 避免“…方案”等仅共享通用词而误匹配到“营销活动方案”类模板。
 MIN_TEMPLATE_MATCH = 0.5
 
-# 模板匹配的任务级关键字重合度阈值：低于该值视为语义未命中，
-# 避免“…方案”等仅共享通用词而误匹配到“营销活动方案”类模板。
-MIN_TEMPLATE_MATCH = 0.5
-
 
 def _steps_from_actions(actions: List[str]) -> List[ProcessStep]:
     """把动作文案序列转成链式依赖的步骤列表（步骤之间自动拼接 depends_on）。"""
@@ -169,17 +165,22 @@ class TemplateManager:
         self._connect()
         if version is not None:
             row = self._conn.execute(
-                "SELECT data FROM template_store WHERE template_id=? AND version=?",
+                "SELECT data, status FROM template_store WHERE template_id=? AND version=?",
                 (template_id, version),
             ).fetchone()
         else:
-            sql = "SELECT data FROM template_store WHERE template_id=?"
+            sql = "SELECT data, status FROM template_store WHERE template_id=?"
             args: tuple = (template_id,)
             if active_only:
                 sql += " AND status='active'"
             sql += " ORDER BY version DESC LIMIT 1"
             row = self._conn.execute(sql, args).fetchone()
-        return json.loads(row["data"]) if row else None
+        if row is None:
+            return None
+        # 行级 status 列是权威值，覆盖 data JSON 中可能滞后的旧值
+        d = json.loads(row["data"])
+        d["status"] = row["status"]
+        return d
 
     def _prev_sync(self, template_id: str, version: int) -> Optional[Dict[str, Any]]:
         self._connect()

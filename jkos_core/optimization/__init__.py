@@ -9,7 +9,7 @@
     engine = OptimizationEngine()
     await engine.initialize()
     result = await engine.execute("生成周报")
-    print(result.token_used)  # 首次全量 15000，命中缓存后 1000 以内
+    print(result.token_used)  # 首次全量 15000，命中缓存后回放成本 100
 """
 
 from __future__ import annotations

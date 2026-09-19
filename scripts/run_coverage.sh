@@ -15,7 +15,7 @@ echo
 
 # 运行测试并收集覆盖率
 $PYTHON -m pytest "$@" \
-    --cov=dsh_core \
+    --cov=jkos_core \
     --cov-report=term-missing \
     --cov-report=html:coverage_report \
     --tb=short
