@@ -109,7 +109,8 @@ class TestRestTenantVisibility:
 
         assert "m14_rest_tool" in names_a  # 归属租户可见
         assert "m14_rest_tool" not in names_b  # 其它租户不可见
-        assert "m14_rest_tool" in names_anon  # 匿名列表可见全部
+        # M16 安全加固：匿名列表不泄露租户自定义工具（与 tools/call 匿名守卫对齐）
+        assert "m14_rest_tool" not in names_anon
 
         assert tc.get("/tools", headers=_auth(*_TENANT_A)).json()["count"] == len(PREDEFINED_TOOLS) + 1
         assert tc.get("/tools", headers=_auth(*_TENANT_B)).json()["count"] == len(PREDEFINED_TOOLS)
@@ -197,7 +198,8 @@ class TestJsonRpc:
         assert "m14_jr_tool" not in names_b
 
         names_anon = [t["name"] for t in _jsonrpc(tc, "tools/list", {}, 4)["result"]["tools"]]
-        assert "m14_jr_tool" in names_anon
+        # M16 安全加固：匿名列表不泄露租户自定义工具
+        assert "m14_jr_tool" not in names_anon
 
     def test_tools_call_visibility(self, tc):
         _register(tc, "m14_jr_call", headers=_auth(*_TENANT_A))

@@ -38,8 +38,11 @@
 - **测试自纠**：集成用例原先只断言「收到 `turn/end`」，被 `finish_reason=error` 的失败轮掩盖（AC-1 曾假通过）。已改为断言 `finish_reason == "completed"` 并透出错误。
 - **顺手清理**：`bootstrap.py` 重复 import 行。
 
-### 残留风险（未在本次解决）
-- **JKOS `/mcp` 匿名放行**：`_visible_tools(None)` 返回**全部**工具（M14 既有设计）。ToolBridge 的缓解是**缺 token 时拒绝构建配置**（`mcp_client_row` 抛 `ToolBridgeConfigError`），保证 harness 连接必带 token；但 JKOS 端点本身对匿名请求仍不拒绝。若需彻底封堵，应在 `/mcp` 对 harness 流量强制鉴权（属 M14 范围，建议单独议题）。
+### 残留风险（已修复，M16 安全跟进 2026-09-19）
+- **JKOS `/mcp` 匿名放行** → 两步修复：
+  1. `_visible_tools(None)` 改为仅返回共享/CORE 工具——原实现匿名列表泄露租户自定义工具的名称/描述/schema（与 tools/call 守卫不一致：调不了但看得见），现对齐 M14 CHANGELOG 承诺「匿名请求仅可见共享工具」。
+  2. 新增严格鉴权模式 `JKOS_MCP_REQUIRE_AUTH`（默认 false 零回归）：开启后 `/tools`、`/tools/call`、`/mcp`、`/tools/register`、`DELETE /tools/{name}` 匿名（含无效 token）一律 401；`/health` 公开。
+  - 验证：本地 887 passed/3 skipped；0.82 严格模式端到端（匿名 401 → 带 token 11 工具 → AC3-PASS）+ 双 venv 各 887 passed/88%。
 - **harness developer preview**：版本锁定 `65e04a5a07`；升级需重跑 AC-1/AC-3 冒烟。
 
 ## Requirements summary

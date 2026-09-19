@@ -234,14 +234,14 @@ class TestVisibilitySemantics:
 
         assert _TOOL in names
 
-    def test_anonymous_lists_everything(self):
-        """匿名上下文返回全部工具 —— 这正是 ToolBridge 必须带 token 的原因"""
+    def test_anonymous_lists_shared_only(self):
+        """M16 安全加固后：匿名列表只返回共享/CORE 工具，租户自定义工具不泄露"""
         server = MCPServer()
         server._tool_owners[_TOOL] = "t2"
 
         names = [t.name for t in server._visible_tools(None)]
 
-        assert _TOOL in names
+        assert _TOOL not in names
 
     def test_cross_tenant_call_rejected(self):
         """越租户调用被拒（404）—— 调用侧守卫是有效的"""

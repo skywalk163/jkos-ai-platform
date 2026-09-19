@@ -72,7 +72,7 @@ jkos_core/harness/
 - ~~Web UI 登录态打通方案~~ → **已解决（实施中发现）**：`dsh web` 要求 `?token=`（无令牌 401），令牌换 cookie 后 303 重定向。JKOS proxy 内实现「令牌注入 + 内部跟随重定向 + `Set-Cookie` 由代理 jar 承载」，调用方无需感知。AC-6 端到端验证通过。
 - ~~ToolBridge 用 external plugin 还是 MCP server 形态~~ → **已解决**：MCP 形态（harness `dsh-mcp-client` 经 `streamable-http` 回调 JKOS `/mcp`）。AC-3 e2e 通过：agent 可见 11 个 `mcp__jkos__*` 工具并成功调用。落地过程踩了三个坑：① Cordis patch 新增条目须用 `insert:` 语义（顶层带 id 是覆盖语义，目标不存在会报 `entry not found`）；② 公网 DeepSeek 端点须切 `protocol: chat-completions`；③ **JKOS 侧 `/mcp` 的 `tools/list` 须输出 MCP 规范驼峰字段 `inputSchema`**（原为蛇形，导致外部客户端拒绝整个工具列表）。
 - **新发现（实施期）**：harness `cordis.patch.yml` 的 patch 行**必须带既有行 `id` 才能生效**，无 `id` 会被静默忽略（LLM 行踩过：缺 `id: llm-deepseek` 导致 `protocol` 覆盖失效、100% `HTTP_404`）。既有行 id 参考 `deepseek-harness/snapshots/session/*/cordis.yml`；`dsh --profile sdk --dump-config` 是验证 patch 是否生效的首选工具。
-- **残留风险**：JKOS `/mcp` 对匿名请求仍放行（`_visible_tools(None)` 返回全部工具，M14 既有设计）。ToolBridge 以「缺 token 拒绝构建」缓解；彻底封堵需在 `/mcp` 对 harness 流量强制鉴权（建议单独立项）。
+- **~~残留风险~~ → 已修复（M16 安全跟进）**：~~JKOS `/mcp` 对匿名请求仍放行~~ 两步落地：① `_visible_tools(None)` 改为仅返回共享/CORE 工具（消除匿名列表对租户自定义工具的泄露，与 tools/call 守卫对齐）；② 新增 `JKOS_MCP_REQUIRE_AUTH` 严格鉴权模式（默认 false 保持 M14 契约；开启后工具端点匿名一律 401，无效 token 不退化为匿名放行）。0.82 严格模式端到端验证：匿名 401、带 token 11 工具、AC3-PASS。
 
 ## Core entities (ontology)
 

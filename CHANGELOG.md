@@ -43,8 +43,10 @@
 - **诊断利器**：`dsh --profile sdk --dump-config` 打印合成后的配置树，可直接看出 patch 是否生效
 - **Web UI 需令牌**：`dsh web` 启动打印 `?token=`（无令牌 401），令牌换 cookie 后 303 重定向，代理需内部跟随
 
-### ⚠️ 残留风险
-- JKOS `/mcp` 对匿名请求仍放行（`_visible_tools(None)` 返回全部工具，M14 既有设计）。ToolBridge 已用「缺 token 拒绝构建」缓解，但端点本身未强制鉴权——建议单独立项在 `/mcp` 对 harness 流量强制鉴权
+### 🔒 安全加固（M16 跟进）
+- **匿名工具列表泄露修复**（`jkos_core/mcp/server.py`）：`_visible_tools(None)` 原返回**全部**工具（含租户自定义工具的名称/描述/schema），与 `tools/call` 的匿名守卫（匿名仅可调用共享工具）不一致——匿名虽调不了但**看得见**。现改为匿名仅返回共享/CORE 工具（owner 为 None），REST `/tools` 与 JSON-RPC `tools/list` 同时生效，对齐 M14 变更记录「匿名请求仅可见共享工具」的承诺。
+- **MCP 服务严格鉴权模式**：新增 `JKOS_MCP_REQUIRE_AUTH`（默认 false，保持 M14 可选鉴权契约、零回归）。开启后工具端点（`/tools`、`/tools/call`、`/mcp`、`/tools/register`、`DELETE /tools/{name}`）对匿名请求（含**无效 token**——不得退化为匿名放行）一律 401；`/health` 保持公开。部署了外部 MCP 客户端（harness ToolBridge）时应开启。
+- **0.82 端到端验证**：`JKOS_MCP_REQUIRE_AUTH=true` 下匿名 `tools/list` 401、带 token 11 工具、harness agent 成功调用 `dsh_session_list`（AC3-PASS）；双 venv 回归各 **887 passed / 3 skipped / 88%**。
 
 ## [M15] JKOS 代码层更名落地 - 2026-09-18
 

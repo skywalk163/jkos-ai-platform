@@ -6,9 +6,9 @@
 形态选择（ADR）：优先 A′ —— `streamable-http` 直连 JKOS `POST /mcp`，
 零新增协议代码；协议不兼容时再落 B′（stdio shim）。
 
-安全要点（Critic 保留意见）：jkos_core/mcp/server.py 的 _visible_tools(ctx)
-在 ctx 为 None（匿名）时返回**全部**工具，因此桥接配置必须带 Bearer token；
-本模块在缺少 token 时**拒绝构建**，避免 harness 匿名连接导致可见性退化。
+安全要点：桥接连接必须携带 Bearer token（`JKOS_MCP_TOKEN`），配合
+JKOS 侧的严格鉴权模式（`JKOS_MCP_REQUIRE_AUTH=true`）——匿名请求会被
+/mcp 端点直接 401 拒绝；同时匿名工具列表也不泄露租户自定义工具。
 token 经环境变量在 harness 侧读取，不写入配置文件（密钥铁律）。
 """
 from __future__ import annotations
@@ -42,8 +42,8 @@ def mcp_client_row(config: HarnessConfig, token: str,
     """
     if not token or not token.strip():
         raise ToolBridgeConfigError(
-            "ToolBridge 必须有鉴权 token：JKOS /mcp 在匿名上下文下会返回全部工具，"
-            "缺少 token 会导致跨租户可见性退化"
+            "ToolBridge 必须有鉴权 token：JKOS /mcp 建议开启严格鉴权模式"
+            "（JKOS_MCP_REQUIRE_AUTH=true，匿名 401），无 token 的连接无法通过"
         )
     return {
         "id": f"mcp-{server_name}",

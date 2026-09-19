@@ -618,11 +618,25 @@ class MCPServer:
         self._tools: Dict[str, MCPTool] = {t.name: t for t in PREDEFINED_TOOLS}
         # M14 多租户：工具拥有者映射（None=共享/CORE，对所有租户可见）
         self._tool_owners: Dict[str, Optional[str]] = {}
+        # M16 安全加固：严格鉴权模式（JKOS_MCP_REQUIRE_AUTH=true 时匿名一律 401）
+        self._require_auth = os.getenv("JKOS_MCP_REQUIRE_AUTH", "").strip().lower() in (
+            "1", "true", "yes", "on",
+        )
         self._sync_builtin_tools()
         self._executor = ToolExecutor(engine=engine)
         self._initialized: bool = False
         self._sessions: Dict[str, Dict] = {}
         self._setup_routes()
+
+    def _auth_guard(self, ctx: Optional[TenantContext]) -> None:
+        """严格鉴权模式守卫：匿名（含无效 token）一律 401
+
+        默认关闭，保持 M14 的可选鉴权契约（匿名可访问共享工具）；
+        部署了外部 MCP 客户端（如 deepseek-harness ToolBridge）时应开启，
+        由连接方携带 Bearer Token（JKOS_MCP_TOKEN）。
+        """
+        if self._require_auth and ctx is None:
+            raise HTTPException(status_code=401, detail="缺少有效的 Bearer Token")
 
     def _sync_builtin_tools(self) -> None:
         """将内置工具同步到全局注册表（幂等：已注册则跳过）"""
@@ -638,11 +652,14 @@ class MCPServer:
     def _visible_tools(self, ctx: Optional[TenantContext]):
         """按租户上下文返回可见工具（M14 多租户升级新增）
 
-        ctx 为 None（匿名/未认证）：返回全部工具（含 CORE 与共享 CUSTOM）；
+        ctx 为 None（匿名/未认证）：仅返回共享/CORE 工具（owner 为 None），
+        不泄露租户自定义工具的名称/描述/schema —— 与 tools/call 的匿名守卫
+        （匿名仅可调用共享工具）对齐，也与 M14 变更记录「匿名请求仅可见共享工具」一致；
         否则：仅返回该租户拥有的 CUSTOM 工具 + 共享/CORE 工具。
         """
         if ctx is None:
-            return list(self._tools.values())
+            return [t for t in self._tools.values()
+                    if self._tool_owners.get(t.name) is None]
         return [
             t for t in self._tools.values()
             if self._tool_owners.get(t.name) in (None, ctx.tenant_id)
@@ -662,6 +679,7 @@ class MCPServer:
 
         @self.app.get("/tools")
         async def list_tools(ctx: Optional[TenantContext] = Depends(get_optional_context)):
+            self._auth_guard(ctx)
             visible = self._visible_tools(ctx)
             return {
                 "tools": [t.model_dump() for t in visible],
@@ -674,6 +692,7 @@ class MCPServer:
             ctx: Optional[TenantContext] = Depends(get_optional_context),
         ):
             """调用工具 (兼容旧接口)"""
+            self._auth_guard(ctx)
             try:
                 data = await request.json()
                 tool_call = MCPToolCall(**data)
@@ -724,6 +743,7 @@ class MCPServer:
             ctx: Optional[TenantContext] = Depends(get_optional_context),
         ):
             """MCP 标准 JSON-RPC 端点"""
+            self._auth_guard(ctx)
             try:
                 data = await request.json()
             except Exception:
@@ -868,6 +888,7 @@ class MCPServer:
             ctx: Optional[TenantContext] = Depends(get_optional_context),
         ):
             """注册自定义工具（M14：可选携带租户上下文，工具归属该租户）"""
+            self._auth_guard(ctx)
             try:
                 data = await request.json()
                 tool = MCPTool(**data)
@@ -891,8 +912,12 @@ class MCPServer:
             return {"status": "registered", "tool_name": tool.name}
 
         @self.app.delete("/tools/{tool_name}")
-        async def unregister_tool(tool_name: str):
-            """注销工具"""
+        async def unregister_tool(
+            tool_name: str,
+            ctx: Optional[TenantContext] = Depends(get_optional_context),
+        ):
+            """注销工具（严格模式下需认证）"""
+            self._auth_guard(ctx)
             if tool_name in self._tools:
                 del self._tools[tool_name]
                 self._tool_owners.pop(tool_name, None)
