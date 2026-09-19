@@ -95,15 +95,25 @@
 
 | 任务 | 优先级 | 预估工时 | 说明 |
 | --- | --- | --- | --- |
-| 18.1 生产调度 + 质量追溯 | P0 | 3天 | 批次追踪、步骤留痕、异常告警闭环 |
-| 18.2 多租户 L2 schema 隔离 | P0 | 3天 | 数据层隔离 + 迁移脚本 + 回归 |
-| 18.3 产品化三方验收 | P1 | 2天 | 三案例演示脚本、验收文档、已知问题清单收敛 |
+| 18.1 生产调度 + 质量追溯 | P0 | 3天 | ✅ 完成（2026-09-19）。`tenants/winery/` 案例C：批次追踪、步骤留痕、异常告警闭环；修复注册冲突见版本记录 0.3.0 |
+| 18.2 多租户 L2 schema 隔离 | P0 | 3天 | ✅ 完成（2026-09-20）。SQLite 独立 `.db` 真实隔离 + PG DDL 渲染就绪 + 运行时接线（默认关闭）+ 生命周期/安全加固；见版本记录 0.4.0 |
+| 18.3 产品化三方验收 | P1 | 2天 | ✅ 完成（2026-09-20）。三案例演示脚本（`scripts/demo_three_cases.py`）、服务器验收脚本（`scripts/m18_accept82.sh`）、验收报告与已知问题清单 |
 
 ### 产出物
 
 - 生产调度/质量追溯模块与用例
 - 多租户隔离迁移说明与验证用例
-- 三案例 P1 验收报告
+- 三案例 P1 验收报告（`docs/M18-产品化P1验收报告.md`）
+
+### M18 验收
+
+- [x] 案例C 酒厂 4 条工作流端到端可跑通（`tests/test_winery.py` 7/7）
+- [x] 多租户 L2 物理隔离真实落地：独立 `.db` 文件 + 幂等迁移，`tenant_schema.py` 覆盖率 **100%**
+- [x] 运行时接线默认关闭、行为等价（隔离关闭时 `tenant_schemas is None`，既有用例零退化）；开启后 L2 租户实例只落独立库、L1 仍走主库、跨租户查询 403
+- [x] 三案例演示全部 COMPLETED（4/4），终态标记 `M18.3-DEMO-OK`
+- [x] 全量回归 **999 passed / 3 skipped / 0 failed**（M16 基线 887，零退化）；行覆盖率 **93%**（≥ 88%）
+- [x] 0.82 双 venv 复验：py3.12 / py3.11 均 **999 passed / 3 skipped**（覆盖率 93%），`m18_accept82.sh` 终态 `M18-ACCEPT-OK`
+- [x] 已知问题清单收敛（6 条，见验收报告 §七）
 
 ---
 
@@ -175,8 +185,8 @@
 
 | 指标 | M16 基线 | M17+ 目标 |
 | --- | --- | --- |
-| 全量测试 | 887 passed / 3 skipped | 不退化，稳步增长 |
-| 行覆盖率 | 88% | ≥ 88% 且 `optimization/` 各模块 ≥ 85% |
+| 全量测试 | 887 passed / 3 skipped | 不退化，稳步增长。M18 实测 **999 passed / 3 skipped / 0 failed** |
+| 行覆盖率 | 88% | ≥ 88% 且 `optimization/` 各模块 ≥ 85%（M18 实测总覆盖率 **93%**） |
 | Token 消耗 | 未量化 | 缓存回放 ≤ 全量 10% |
 | 自动化成功率 | 未量化 | > 95% |
 | 模板库 | 种子模板 | 50+ 场景 |
@@ -226,5 +236,7 @@ python scripts/benchmarks/bench_optimization.py   # 输出 Token 消耗与耗时
 
 ## 📝 版本记录
 
+- **0.4.0**（2026-09-20）：M18 收官（18.1/18.2/18.3 全部达成）。18.2 多租户 L2 物理隔离落地（SQLite 独立 `.db` + PG DDL 渲染就绪 + 运行时接线默认关闭 + 生命周期/安全加固，`tenant_schema.py` 覆盖率 100%）；18.3 三案例验收交付（`scripts/demo_three_cases.py`、`scripts/m18_accept82.sh`、`docs/M18-产品化P1验收报告.md`，演示 4/4 COMPLETED / `M18.3-DEMO-OK`）；全量回归 **999 passed / 3 skipped / 0 failed**、行覆盖率 **93%**（M16 基线 887 / 88%，零退化）。
+- **0.3.0**（2026-09-19）：M18.1 收官。新增案例C 酒厂生产调度 + 质量追溯（`tenants/winery/`，20 节点 + 4 工作流 + `tests/test_winery.py` 7 用例）；修复 `nodes.py` 重复挂载冲突（重复的 winery 懒挂载块令 `BUILTIN_NODES.update(WINERY_NODES)` 执行两次，覆盖 media 的 5 个共享 handler；删除重复块 + 改用 `setdefault`，共享键 media 先注册优先），全量回归 **962 passed / 3 skipped / 0 failed**（M16 基线 887，零退化）。
 - **0.1.0**（2026-09-19）：M16 收官后制定 M17+ 延续规划，M17 聚焦 M12 自动化优化引擎收官。
 - **0.2.0**（2026-09-19）：M17 收官。`jkos_core/optimization/` 各模块覆盖率 98%~100%（≥85% 达标），四口径基准达标（Token 15000→100、节省 99.33%；成功率 45/45=100%；模板库 61 场景；自动执行 24.8ms/任务），《M6-M10》M12 验收 4/4 补勾；新增 `tests/test_optimization/` 78 用例与 `scripts/benchmarks/bench_optimization.py`，`run_coverage.sh` 采用 `--cov=jkos_core`。

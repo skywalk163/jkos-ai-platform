@@ -4,6 +4,35 @@
 > 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义参考 [SemVer](https://semver.org/lang/zh-CN/)。
 > M2-M4 为早期规划实现的里程碑，功能已折叠计入后续里程碑提交，无独立提交记录。
 
+## [M18] 产品化 P1（案例C 酒厂 + 多租户 L2 隔离）- 2026-09-20
+
+### 新增（18.1 案例C 酒厂）
+- **案例C 酒厂生产调度与质量追溯**（`tenants/winery/`）：20 个业务节点 + 4 条工作流（生产调度 / 质量追溯 / 营销决策 / 危机告警），回收页、复检、批次追踪闭环
+- **独立测试**（`tests/test_winery.py`，7 用例）：节点注册 20 项 + 工作流注册 4 条 + 端到端运行 + 生产调度审批路径
+
+### 新增（18.2 多租户 L2 schema 隔离）
+- **真实物理隔离**（`jkos_core/db/tenant_schema.py`）：SQLite 模式下 L2 租户 = 独立 `.db` 文件，`create_schema` / `migrate_schema` / `drop_schema` 执行真实 SQL（`MIGRATIONS` 幂等迁移）；PostgreSQL 模式经 `render_pg_schema_sql` 渲染可再生 DDL，假连接串全程零连接（延续 M4.4 契约）
+- **运行时接线（默认关闭）**：`TenantIsolationConfig`（`JKOS_TENANT_L2_ENABLED` / `DSH_TENANT_DATA_DIR` / `JKOS_TENANT_L2_CODES`）+ `AppComponents.database_for()` / `engine_for()` + `wire_tenant_isolation()`（单租户失败降级 L1，不阻塞启动）；API 审批路由经 `engine_provider` 按 `ctx.tenant_code` 取租户引擎，L2 模式下跨租户查询 403
+- **生命周期与安全**：新增 `close` / `close_all` / `unregister_tenant`；租户码白名单校验（防路径穿越）；`data_dir` 可配置（参数 + 环境变量）
+- **独立测试**：`tests/test_m18_2.py`（28 用例）+ `tests/test_m18_2_runtime.py`（9 用例）
+
+### 新增（18.3 产品化三方验收）
+- **三案例演示脚本**（`scripts/demo_three_cases.py`）：案例A `d1_code_review`（含审批闭环）/ 案例B `media.content_production` / 案例C `winery.quality_traceability` + `winery.production_scheduling`，输出 JSON 证据并打印终态标记 `M18.3-DEMO-OK`
+- **服务器验收脚本**（`scripts/m18_accept82.sh`）：双 venv 全量回归 + 三案例演示 + L2 隔离接线冒烟，终态标记 `M18-ACCEPT-OK`
+- **验收报告**（`docs/M18-产品化P1验收报告.md`）：AC 表、演示证据、覆盖率、已知问题清单
+
+### 🐛 修复
+- **工作流节点注册冲突**（`jkos_core/workflow/nodes.py`）：winery 懒挂载块被执行两次，`BUILTIN_NODES.update(WINERY_NODES)` 把 media 的 5 个共享 handler（`content_generator` / `content_reviewer` / `sentiment_monitor` / `sentiment_analyzer` / `crisis_alerter`）覆盖，导致 `test_workflow_m2.py` 4 个用例失败。修复：删除重复挂载块 + 改用 `setdefault`（media 先注册优先）；工作流注册表无代码冲突，保持 `update`。
+- **租户连接泄漏**（`tenant_schema.py`）：`create_schema` 中 `migrate()` 抛异常时连接既不关闭也不入连接表 → 迁移失败先 `close()` 再抛异常。
+- **`connection.py` 重复类定义**：文件末尾重复定义的 `ConnectionPool` / `ConnectionPoolTimeout`（逐行等价）已删除，保留单一定义。
+- **`tests/test_winery.py` 审批分支**：`engine.status()` 为同步方法，原 `run(engine.status(...))` 会抛 `TypeError`（该分支此前未被触发）。
+
+### 测试
+- 全量回归（本地 py3.14）：**999 passed / 3 skipped / 0 failed**（M16 基线 887 → M17 962 → M18 999，零退化）
+- 0.82 服务器双 venv：py3.12 **999 passed / 3 skipped**（49.31s）、py3.11 **999 passed / 3 skipped**（46.62s），覆盖率均 **93%**
+- 行覆盖率：**93%**（M16 基线 88%）；`jkos_core/db/tenant_schema.py` **100%**
+- 三案例演示：本地与 0.82 均 **4/4 COMPLETED**，终态 `M18.3-DEMO-OK`；`scripts/m18_accept82.sh` 终态 `M18-ACCEPT-OK`
+
 ## [M17] 自动化优化引擎收官（M12 验收补勾）- 2026-09-19
 
 ### 新增
