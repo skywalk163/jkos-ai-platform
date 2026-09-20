@@ -213,10 +213,25 @@ class FakeNatsConnection:
 
 # ─── M19.2: NATS 总线 ───
 
-async def test_m19_2_connect_embedded_when_nats_missing():
-    bus = NatsEventBus()
+async def test_m19_2_connect_embedded_when_nats_missing(monkeypatch):
+    # 模拟 nats-py 不可用：替换 sys.modules["nats"] 为 stub，
+    # 使 NatsEventBus.connect() 内的 `import nats` 解析到抛出异常的 connect，
+    # 从而确定性地（不依赖真实端口/网络行为）走到 embedded 降级路径。
+    import sys
+    from types import ModuleType
+
+    fake_nats = ModuleType("nats")
+
+    async def _connect_fail(*args, **kwargs):
+        raise ConnectionError("simulated: NATS unreachable")
+
+    fake_nats.connect = _connect_fail
+    monkeypatch.setitem(sys.modules, "nats", fake_nats)
+
+    bus = NatsEventBus(nats_url="nats://127.0.0.1:4222")
     await bus.connect()
     assert bus._connected is True
+    assert bus._nc is None
     assert bus.mode == "embedded"
     event = build_sentiment_raised_event("t1", "high", 0.9, "weibo", "bad")
     assert await bus.publish(event) is True
