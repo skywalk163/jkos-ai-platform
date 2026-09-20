@@ -309,14 +309,16 @@ class NatsEventBus(EventBus):
     @staticmethod
     def _event_to_dict(event: Event) -> Dict[str, Any]:
         """事件 -> 跨进程信封（JSON 可序列化）"""
+        status = getattr(event, "status", None)
         return {
             "id": event.id,
             "type": event.type,
             "tenant_id": event.tenant_id,
-            "payload": event.payload,
-            "metadata": event.metadata,
-            "status": event.status.value,
-            "created_at": event.created_at,
+            "payload": getattr(event, "payload", {}),
+            "metadata": getattr(event, "metadata", {}),
+            "status": status.value if hasattr(status, "value")
+            else (status or EventStatus.PENDING.value),
+            "created_at": getattr(event, "created_at", ""),
         }
 
     @staticmethod

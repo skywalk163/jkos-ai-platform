@@ -180,8 +180,8 @@ class PostgresMigrator:
                 statements.extend(f"    {column}," for column in columns[:-1])
                 statements.append(f"    {columns[-1]}")
                 statements.append(");")
-                statements.extend(indexes)
-                statements.extend(triggers)
+                statements.extend(self._terminate_statement_lines(indexes))
+                statements.extend(self._terminate_statement_lines(triggers))
                 return statements
 
         # 通用骨架兜底（无真实 DDL 可用时）
@@ -233,6 +233,26 @@ class PostgresMigrator:
             return ddl, indexes, triggers
         finally:
             conn.close()
+
+    @staticmethod
+    def _terminate_statement_lines(lines: List[str]) -> List[str]:
+        """确保每个非空、非注释的语句元素以分号结尾
+
+        内省的索引/触发器 SQL 行（_introspect_table）不带尾部分号，而
+        _execute_async_script 只按“行尾分号”归并完整语句：分号缺失会把多条
+        CREATE 语句合并到同一缓冲区，在 PostgreSQL 上触发
+        `syntax error at or near "CREATE"`。注释行仅作文档保留，由执行器跳过。
+        """
+        terminated: List[str] = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("--"):
+                terminated.append(line)
+            elif stripped.endswith(";"):
+                terminated.append(line)
+            else:
+                terminated.append(line.rstrip() + ";")
+        return terminated
 
     def _parse_create_table_ddl(self, ddl: str) -> List[str]:
         """解析 SQLite CREATE TABLE 语句，返回 PostgreSQL 列定义列表"""
@@ -462,12 +482,8 @@ class PostgresMigrator:
             pool = await pool_manager.get_async_pool()
             async with pool.acquire() as conn:
                 for table in plan.tables:
-                    for statement in self.generate_migration_sql(table):
-                        await conn.execute(statement)
-                    for statement in self.generate_data_migration_sql(table):
-                        if statement.lstrip().startswith("--"):
-                            continue
-                        await conn.execute(statement)
+                    await self._execute_async_script(conn, self.generate_migration_sql(table))
+                    await self._execute_async_script(conn, self.generate_data_migration_sql(table))
             plan.status = MigrationStatus.COMPLETED
             plan.completed_at = self._now()
             logger.info("迁移计划完成（真实执行）: %s", plan_id)
@@ -479,6 +495,31 @@ class PostgresMigrator:
             return False
         finally:
             await pool_manager.close_all_async()
+
+    @staticmethod
+    async def _execute_async_script(conn: Any, lines: List[str]) -> None:
+        """在真实 PostgreSQL 上按完整语句逐条执行生成的行序列
+
+        generate_migration_sql / generate_data_migration_sql 返回的每个元素是
+        “行”而非“独立语句”（CREATE TABLE 被拆分多行、纯注释行只用于文档）。
+        asyncpg 扩展协议一次只能执行一条语句且不支持纯注释查询，因此在执行
+        真实目标库前要把行按结尾分号归并为完整语句、跳过空行与注释行。
+        """
+        buffer = ""
+        for raw in lines:
+            line = raw.rstrip()
+            if not line or line.lstrip().startswith("--"):
+                continue
+            buffer += line + "\n"
+            if line.endswith(";"):
+                statement = buffer.strip().rstrip(";").strip()
+                buffer = ""
+                if statement:
+                    await conn.execute(statement)
+        if buffer.strip():
+            statement = buffer.strip().rstrip(";").strip()
+            if statement:
+                await conn.execute(statement)
 
     def get_migration_plan(self, plan_id: str) -> Optional[MigrationPlan]:
         """获取迁移计划"""
