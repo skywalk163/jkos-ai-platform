@@ -130,24 +130,24 @@
 
 | 任务 | 优先级 | 预估工时 | 说明 |
 | --- | --- | --- | --- |
-| 19.1 PostgreSQL 迁移 | P0 | 5天 | 🔄 代码层完成（2026-09-20）：真实 DDL/数据转换 + asyncpg 连接池 + 迁移产物落盘；**待补**双跑对比报告、回滚方案、实际切换 |
-| 19.2 NATS 总线替换 | P1 | 4天 | 🔄 代码层完成（2026-09-20）：真实 nats-py 接入 + 内嵌模式降级兼容层 + 事件回归用例；**待补**真实 NATS 服务上的回归结果 |
+| 19.1 PostgreSQL 迁移 | P0 | 5天 | ✅ 达成（2026-09-20）：真实 DDL/数据转换 + asyncpg 连接池 + 迁移产物落盘 + 双跑对比（SQLite 产物 / 真实 PG 在线执行数据一致）+ 回滚（前滚→DROP→重建可逆重放）+ 实际切换（应用经连接池改指 PG 读写）；真实 PostgreSQL 16.4（127.0.0.1:5432）在线执行，见 `docs/M19-基础设施迁移验收报告.md` |
+| 19.2 NATS 总线替换 | P1 | 4天 | ✅ 达成（2026-09-20）：真实 nats-py 接入 + 内嵌模式降级兼容层 + 事件回归用例；真实 NATS v2.15.0（127.0.0.1:4222）发布 → 信封解码 → 订阅回调完整回路通过，见 `docs/M19-基础设施迁移验收报告.md` |
 
 ### 产出物
 
-- PostgreSQL 迁移脚本与回滚方案、双跑对比报告（迁移脚本已就绪，回滚方案与双跑对比待补）
-- NATS 替换说明与事件回归结果（替换与兼容层已就绪，真实服务回归待补）
+- PostgreSQL 迁移脚本、回滚方案与双跑对比报告 ✅（真实 PG 16.4 双跑/回滚/切换证据，验收报告 §四）
+- NATS 替换说明与真实服务事件回归结果 ✅（真实 NATS v2.15.0 发布/订阅/幂等回调回归，验收报告 §五）
 
-### M19 验收（进行中）
+### M19 验收（已闭环 ✅）
 
 - [x] 迁移脚本真实化：SQLite DDL/数据 → PostgreSQL（类型映射、`AUTOINCREMENT`→`SERIAL`、索引随表、JSON→JSONB、数据 INSERT 转义）
 - [x] 真实 asyncpg 连接池（懒加载 + `ConnectionError` 语义 + 关闭接口）
 - [x] NATS 总线真实接入 + 兼容层（未安装/不可达自动降级内嵌内存模式）
-- [x] 全量回归零退化：本地 py3.14 与 0.82 双 venv 均 **1017 passed / 4 skipped / 0 failed**（M18 基线 999）
-- [ ] 双跑对比报告（SQLite vs PostgreSQL 功能/性能一致）
-- [ ] 回滚方案与实际切换
-- [ ] 真实 NATS 服务上的事件回归结果
-- [ ] 覆盖率不低于上一轮（当前总覆盖率 **92%**，M18 为 93%；缺口集中在需在线服务的真实连接路径）
+- [x] 全量回归零退化：本地 py3.14 全量回归 **1032 passed / 3 skipped / 0 failed**（M18 基线 999，零退化）
+- [x] 双跑对比报告（SQLite vs PostgreSQL 功能/性能一致）✅（真实 PG 16.4 在线执行与 SQLite 产物数据一致，验收报告 §四）
+- [x] 回滚方案与实际切换 ✅（前滚→DROP→重建可逆重放；应用经 asyncpg 连接池改指 PG 读写）
+- [x] 真实 NATS 服务上的事件回归结果 ✅（真实 NATS v2.15.0 发布/订阅/幂等回调回归，验收报告 §五）
+- [x] 覆盖率不低于上一轮：总覆盖率 **93%**（M18 为 93%，持平；TOTAL 8036 语句 / 544 missing，41 文件跳过低行）
 
 ---
 
@@ -247,7 +247,7 @@ python scripts/benchmarks/bench_optimization.py   # 输出 Token 消耗与耗时
 
 ## 📝 版本记录
 
-- **0.5.0**（2026-09-20）：M19 代码层完成（验收未闭环）。19.1 PostgreSQL 迁移层真实化（`SQLITE_TO_PG_TYPE_MAP` 类型映射、DDL 解析与 `sqlite_master` 内省、真实数据 INSERT 导出、迁移产物落盘、asyncpg 连接池懒加载）；19.2 NATS 总线真实化（nats-py 接入 + 未安装/不可达自动降级内嵌模式 + 事件信封跨进程分发与幂等回调）；新增 `tests/test_m19.py` 19 用例，全量回归 **1017 passed / 4 skipped / 0 failed**（本地 py3.14 与 0.82 双 venv）。收口修复：`pyproject.toml` 重复键致 TOML 非法（阻断 pytest）、`nats.py` 重复赋值、`postgres.py` 末尾缺换行。待补：双跑对比报告、回滚方案、真实 NATS 服务回归。
+- **0.5.0**（2026-09-20）：M19 验收闭环（19.1/19.2/覆盖率全部达成）。19.1 PostgreSQL 迁移层真实化（`SQLITE_TO_PG_TYPE_MAP` 类型映射、DDL 解析与 `sqlite_master` 内省、真实数据 INSERT 导出、迁移产物落盘、asyncpg 连接池懒加载），真实 PostgreSQL 16.4（127.0.0.1:5432）在线执行，双跑/回滚/实际切换证据见 `docs/M19-基础设施迁移验收报告.md` §四；19.2 NATS 总线真实化（nats-py 接入 + 未安装/不可达自动降级内嵌模式 + 事件信封跨进程分发与幂等回调），真实 NATS v2.15.0（127.0.0.1:4222）发布/订阅/幂等回调回归通过，验收报告 §五；新增 `tests/test_m19.py` 19 用例与 `tests/test_m19_duelrun.py`、`tests/test_models.py`，全量回归 **1032 passed / 3 skipped / 0 failed**、行覆盖率 **93%**（M18 基线 999 / 93%，零退化）。收口修复：`pyproject.toml` 重复键致 TOML 非法（阻断 pytest）、`nats.py` 重复赋值、`postgres.py` 末尾缺换行、`postgres.py` 多语句执行拆分与缺 `;` 语句终止。已知问题：M18 #3 由 M19 关闭；#4（`server.py` 遗留装配清理）与 #5（连接池参数命名漂移）随文档整理顺延。
 - **0.4.0**（2026-09-20）：M18 收官（18.1/18.2/18.3 全部达成）。18.2 多租户 L2 物理隔离落地（SQLite 独立 `.db` + PG DDL 渲染就绪 + 运行时接线默认关闭 + 生命周期/安全加固，`tenant_schema.py` 覆盖率 100%）；18.3 三案例验收交付（`scripts/demo_three_cases.py`、`scripts/m18_accept82.sh`、`docs/M18-产品化P1验收报告.md`，演示 4/4 COMPLETED / `M18.3-DEMO-OK`）；全量回归 **999 passed / 3 skipped / 0 failed**、行覆盖率 **93%**（M16 基线 887 / 88%，零退化）。
 - **0.3.0**（2026-09-19）：M18.1 收官。新增案例C 酒厂生产调度 + 质量追溯（`tenants/winery/`，20 节点 + 4 工作流 + `tests/test_winery.py` 7 用例）；修复 `nodes.py` 重复挂载冲突（重复的 winery 懒挂载块令 `BUILTIN_NODES.update(WINERY_NODES)` 执行两次，覆盖 media 的 5 个共享 handler；删除重复块 + 改用 `setdefault`，共享键 media 先注册优先），全量回归 **962 passed / 3 skipped / 0 failed**（M16 基线 887，零退化）。
 - **0.1.0**（2026-09-19）：M16 收官后制定 M17+ 延续规划，M17 聚焦 M12 自动化优化引擎收官。

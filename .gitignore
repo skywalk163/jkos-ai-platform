@@ -20,3 +20,6 @@ coverage_report/
 .env
 .venv/
 venv/
+
+# 第三方下载的本地工具二进制（NATS server 等，不入库）
+tools/

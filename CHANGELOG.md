@@ -4,7 +4,7 @@
 > 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义参考 [SemVer](https://semver.org/lang/zh-CN/)。
 > M2-M4 为早期规划实现的里程碑，功能已折叠计入后续里程碑提交，无独立提交记录。
 
-## [M19] 基础设施迁移（PostgreSQL + NATS）- 2026-09-20（代码层完成，验收未闭环）
+## [M19] 基础设施迁移（PostgreSQL + NATS）- 2026-09-20（**验收闭环**）
 
 ### 新增（19.1 PostgreSQL 迁移层真实化）
 - **真实 SQLite → PostgreSQL 转换**（`jkos_core/db/postgres.py`）：
@@ -26,12 +26,15 @@
 
 ### 测试
 - `tests/test_m19.py`：**19 用例（18 passed / 1 skipped）**，跳过项为真实 NATS 服务不可达时的连接冒烟
-- 全量回归：本地 py3.14 **1017 passed / 4 skipped / 0 failed**（M18 基线 999，零退化）；0.82 双 venv（py3.12 / py3.11）均 **1017 passed / 4 skipped**
-- 覆盖率：`bus/nats.py` **95%**、`db/postgres.py` **77%**；总覆盖率 **92%**（M18 为 93%，微降源于真实 PG/NATS 连接路径需在线服务，留待双跑对比阶段覆盖）
+- 新增真实双跑/回滚/切换用例：`tests/test_m19_duelrun.py`（真实 PostgreSQL 16.4 在线执行）+ `tests/test_models.py`
+- 全量回归：本地 py3.14 **1032 passed / 3 skipped / 0 failed**（M18 基线 999，零退化）
+- 覆盖率：总覆盖率 **93%**（M18 为 93%，M16 基线 88%；达标）；`bus/nats.py` **97%**、`db/postgres.py` **86%**、`models/__init__.py` **100%**
 
-### ⚠️ 未闭环（M19 验收未达成）
-- 19.1 剩余：双跑对比报告（功能/性能一致）、回滚方案、实际切换
-- 19.2 剩余：真实 NATS 服务上的事件回归结果（当前仅验证了无服务时的降级路径）
+### ✅ 验收闭环（M19 验收达成，详情见 `docs/M19-基础设施迁移验收报告.md`）
+- **19.1 真实 PostgreSQL 双跑 / 回滚 / 实际切换**：在真实 PG 16.4（127.0.0.1:5432，库 `dsh_ai`）上完成迁移 SQL 生成 → asyncpg 执行 → 源/目标数据双跑对比 → 回滚 → 实际切换，全部通过（三次生产修复：`_execute_async_script` 缓冲生成 SQL 仅提交完整语句，修复 `syntax error at end of input`；`_terminate_statement_lines` 为内省所得索引/触发器语句补全 `;`，修复 `syntax error at or near "CREATE"`；测试侧 `username=`→`user=` 连接参数字典）
+- **19.2 真实 NATS 事件回归**：真实 NATS v2.15.0（127.0.0.1:4222）上 publish / ack / durable subscribe 往返通过；`_event_to_dict` 以 `getattr` 回退增强 payload / metadata / status / created_at 健壮性
+- **覆盖率 ≥ 93%**：全套件 1032 用例总覆盖率 **93%** 达标
+- **双跑对比报告**：`docs/M19-基础设施迁移验收报告.md`（功能/性能一致、回滚方案、切换步骤与证据、已知问题）
 
 ## [M18] 产品化 P1（案例C 酒厂 + 多租户 L2 隔离）- 2026-09-20
 
