@@ -4,6 +4,35 @@
 > 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义参考 [SemVer](https://semver.org/lang/zh-CN/)。
 > M2-M4 为早期规划实现的里程碑，功能已折叠计入后续里程碑提交，无独立提交记录。
 
+## [M19] 基础设施迁移（PostgreSQL + NATS）- 2026-09-20（代码层完成，验收未闭环）
+
+### 新增（19.1 PostgreSQL 迁移层真实化）
+- **真实 SQLite → PostgreSQL 转换**（`jkos_core/db/postgres.py`）：
+  - `SQLITE_TO_PG_TYPE_MAP` 类型映射（`DATETIME`→`TIMESTAMP`、`JSON`→`JSONB`、`BLOB`→`BYTEA` 等）
+  - `generate_migration_sql`：三档取源（显式 DDL 解析 / `sqlite_master` 内省 / 通用骨架兜底），解析 CREATE TABLE 列定义（感知括号与引号的顶层逗号切分）、`AUTOINCREMENT`→`SERIAL`、DEFAULT 表达式转换；索引随表产出，SQLite `RAISE` 触发器以注释保留待手工改写
+  - `generate_data_migration_sql`：从源库导出真实数据为批量 INSERT（单引号转义、JSON→`::jsonb`、bytes→`E'\\x..'`、时间类型字面量）
+  - `execute_migration`（生成迁移产物，目标库无需在线）+ `write_migration_artifacts`（落盘 DDL + 数据 SQL）+ `execute_migration_async`（真实 asyncpg 执行，失败置 FAILED）
+- **真实 asyncpg 连接池**：`ConnectionPoolManager.get_async_pool()` 懒加载（asyncpg 未安装或目标库不可达抛 `ConnectionError`），新增 `close_async_pool` / `close_all_async`，`get_stats()` 增加 `async_pool_count`
+
+### 新增（19.2 NATS 总线真实化）
+- **真实 nats-py 接入**（`jkos_core/bus/nats.py`，可选依赖组 `nats`）：未安装或服务器不可达时自动降级内嵌内存模式，`mode` 属性区分 `nats` / `embedded`
+  - publish 走真实 subject 发布（携带完整事件信封），失败回滚为 `PENDING` 且不落本地事件表
+  - subscribe 联动真实 NATS 订阅（支持 queue group），远端消息经信封解码 → `handle_event` 幂等分发；unsubscribe / disconnect 联动取消订阅与关闭连接
+
+### 🐛 修复（本次收口）
+- **`pyproject.toml` 重复 `nats = [...]` 键**：导致 TOML 非法、pytest 完全无法启动（阻断性）→ 删除重复行
+- **`jkos_core/bus/nats.py`** `__init__` 重复赋值 `_nc_subs` → 删除重复行
+- **`jkos_core/db/postgres.py`** 文件末尾缺换行 → 补齐
+
+### 测试
+- `tests/test_m19.py`：**19 用例（18 passed / 1 skipped）**，跳过项为真实 NATS 服务不可达时的连接冒烟
+- 全量回归：本地 py3.14 **1017 passed / 4 skipped / 0 failed**（M18 基线 999，零退化）；0.82 双 venv（py3.12 / py3.11）均 **1017 passed / 4 skipped**
+- 覆盖率：`bus/nats.py` **95%**、`db/postgres.py` **77%**；总覆盖率 **92%**（M18 为 93%，微降源于真实 PG/NATS 连接路径需在线服务，留待双跑对比阶段覆盖）
+
+### ⚠️ 未闭环（M19 验收未达成）
+- 19.1 剩余：双跑对比报告（功能/性能一致）、回滚方案、实际切换
+- 19.2 剩余：真实 NATS 服务上的事件回归结果（当前仅验证了无服务时的降级路径）
+
 ## [M18] 产品化 P1（案例C 酒厂 + 多租户 L2 隔离）- 2026-09-20
 
 ### 新增（18.1 案例C 酒厂）

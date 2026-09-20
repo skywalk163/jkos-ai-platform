@@ -27,6 +27,7 @@ asr = ["whisper>=20231117"]
 video = ["opencv-python>=4.9.0"]
 test = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0", "pytest-cov>=4.1.0", "respx>=0.21.0"]
 dev = ["ruff>=0.3.0", "mypy>=1.8.0", "pre-commit>=3.7.0"]
+nats = ["nats-py>=2.6.0"]
 
 [project.scripts]
 jkos-server = "jkos_core.cli:main"

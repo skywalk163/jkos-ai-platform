@@ -123,17 +123,33 @@ class NatsEventBus(EventBus):
         self._idempotency_set: Set[str] = set()
         self._connected = False
         self._nc = None  # NATS 连接
+        self._nc_subs: Dict[str, Any] = {}  # 真实 NATS 订阅（sub_id -> 订阅对象）
 
     async def connect(self) -> None:
-        """连接 NATS 服务器"""
-        # 实际实现：import asyncio_nats
-        # self._nc = await asyncio_nats.connect(self.nats_url)
-        self._connected = True
-        logger.info("已连接 NATS: %s", self.nats_url)
+        """连接 NATS 服务器
+
+        优先使用真实 nats-py 客户端；若未安装或服务器不可达，
+        降级为内嵌内存模式（本地事件存储），保证总线可用。
+        """
+        try:
+            import nats  # type: ignore
+            self._nc = await nats.connect(self.nats_url, connect_timeout=3)
+            self._connected = True
+            logger.info("已连接 NATS: %s", self.nats_url)
+        except Exception as e:
+            self._nc = None
+            self._connected = True
+            logger.warning("NATS 不可用（%s），降级为内嵌内存模式", e)
 
     async def disconnect(self) -> None:
         """断开 NATS 连接"""
-        # 实际实现：await self._nc.close()
+        if self._nc is not None:
+            try:
+                await self._nc.close()
+            except Exception as e:
+                logger.warning("关闭 NATS 连接失败: %s", e)
+            self._nc = None
+        self._nc_subs.clear()
         self._connected = False
         logger.info("已断开 NATS 连接")
 
@@ -143,11 +159,19 @@ class NatsEventBus(EventBus):
             logger.error("NATS 未连接")
             return False
 
+        # 真实 NATS 发布（携带完整事件信封，便于跨进程消费与 ack）
+        if self._nc is not None:
+            try:
+                await self._nc.publish(
+                    event.type, json.dumps(self._event_to_dict(event)).encode())
+            except Exception as e:
+                logger.error("发布事件到 NATS 失败: %s - %s", event.id, e)
+                event.status = EventStatus.PENDING
+                return False
+
         event.status = EventStatus.PUBLISHED
         event.published_at = self._now()
         self._event_store[event.id] = event
-
-        # 实际实现：await self._nc.publish(event.type, json.dumps(event.payload).encode())
         logger.info("发布事件: %s (%s)", event.id, event.type)
         return True
 
@@ -167,12 +191,35 @@ class NatsEventBus(EventBus):
         self._subscriptions[sub_id] = sub
         logger.info("订阅事件: %s -> %s (queue=%s)",
                     event_type, sub_id, queue_group or "none")
+
+        # 真实 NATS 订阅：远端消息经本地 handle_event 幂等分发
+        if self._nc is not None:
+            try:
+                async def _on_msg(msg: Any) -> None:
+                    try:
+                        data = json.loads(msg.data.decode())
+                        event = self._event_from_dict(data)
+                        await self.handle_event(event)
+                    except Exception as e:
+                        logger.error("处理 NATS 消息失败: %s", e)
+
+                nc_sub = await self._nc.subscribe(
+                    event_type, queue=queue_group, cb=_on_msg)
+                self._nc_subs[sub_id] = nc_sub
+            except Exception as e:
+                logger.warning("NATS 订阅失败，降级为本地订阅: %s", e)
         return sub
 
     async def unsubscribe(self, subscription_id: str) -> bool:
         """取消订阅"""
         if subscription_id in self._subscriptions:
             del self._subscriptions[subscription_id]
+            nc_sub = self._nc_subs.pop(subscription_id, None)
+            if nc_sub is not None:
+                try:
+                    await nc_sub.unsubscribe()
+                except Exception as e:
+                    logger.warning("取消 NATS 订阅失败: %s", e)
             logger.info("取消订阅: %s", subscription_id)
             return True
         return False
@@ -253,6 +300,37 @@ class NatsEventBus(EventBus):
                 logger.info("重试死信事件: %s", dlq_id)
                 return True
         return False
+
+    @property
+    def mode(self) -> str:
+        """总线模式：nats（真实连接）或 embedded（内嵌内存）"""
+        return "nats" if self._nc is not None else "embedded"
+
+    @staticmethod
+    def _event_to_dict(event: Event) -> Dict[str, Any]:
+        """事件 -> 跨进程信封（JSON 可序列化）"""
+        return {
+            "id": event.id,
+            "type": event.type,
+            "tenant_id": event.tenant_id,
+            "payload": event.payload,
+            "metadata": event.metadata,
+            "status": event.status.value,
+            "created_at": event.created_at,
+        }
+
+    @staticmethod
+    def _event_from_dict(data: Dict[str, Any]) -> Event:
+        """跨进程信封 -> 事件"""
+        return Event(
+            id=data.get("id", ""),
+            type=data.get("type", ""),
+            tenant_id=data.get("tenant_id", ""),
+            payload=data.get("payload", {}),
+            metadata=data.get("metadata", {}),
+            status=EventStatus(data.get("status", EventStatus.PENDING.value)),
+            created_at=data.get("created_at", ""),
+        )
 
     def _now(self) -> str:
         from datetime import datetime, timezone
