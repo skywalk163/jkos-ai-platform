@@ -323,13 +323,12 @@ values = await cache.mget(["k1", "k2"])
 #### 连接池
 
 ```python
-from dsh_core.db.connection import ConnectionPool
+from jkos_core.db.connection import ConnectionPool
 
 # 初始化连接池
 pool = ConnectionPool(
-    min_connections=2,
-    max_connections=10,
-    health_check_interval=60
+    min_size=2,
+    max_size=10,
 )
 
 # 获取连接
@@ -337,8 +336,9 @@ async with pool.acquire() as conn:
     result = await conn.fetch("SELECT * FROM users")
 
 # 监控指标
-metrics = pool.get_metrics()
-print(f"活跃连接: {metrics['active_connections']}")
+metrics = pool.metrics()
+print(f"空闲连接: {metrics['idle']}")
+print(f"活跃连接: {metrics['active']}")
 ```
 
 ### 异步任务队列 (utils)
@@ -652,12 +652,12 @@ async def test_llm_router_chat():
 # conftest.py
 import pytest
 import pytest_asyncio
-from dsh_core.db.connection import ConnectionPool
+from jkos_core.db.connection import ConnectionPool
 
 @pytest_asyncio.fixture
 async def db_pool():
     """数据库连接池固件"""
-    pool = ConnectionPool(min_connections=1, max_connections=5)
+    pool = ConnectionPool(min_size=1, max_size=5)
     yield pool
     await pool.close()
 

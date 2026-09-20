@@ -424,14 +424,17 @@ API 请求
 ### 连接池设计
 
 ```python
-# 连接池配置
+from jkos_core.db.connection import ConnectionPool
+
+# 连接池配置（SQLite 内置连接池）
 pool = ConnectionPool(
-    min_connections=2,      # 最小连接数
-    max_connections=10,     # 最大连接数
-    health_check_interval=60,  # 健康检查间隔
-    max_idle_time=300,      # 最大空闲时间
-    connection_timeout=30   # 连接超时
+    min_size=2,     # 最小连接数
+    max_size=10,    # 最大连接数
 )
+
+# 监控指标（metrics()）
+metrics = pool.metrics()
+print(f"空闲: {metrics['idle']}, 活跃: {metrics['active']}, 总: {metrics['total']}")
 ```
 
 ### 缓存策略
