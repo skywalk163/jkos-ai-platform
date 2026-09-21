@@ -692,6 +692,8 @@ class D3Executor:
         self.coverage_threshold = coverage_threshold
         self.max_cases = max_cases
         self.repo_root = Path(repo_root or REPO_ROOT)
+        # 最近一次执行的证据（供编排层落报告；explore() 只回传 (success, metric, details)）
+        self.last_outcome: Optional[D3Outcome] = None
 
     # ---------- 主流程 ----------
 
@@ -707,6 +709,7 @@ class D3Executor:
 
         def finish() -> D3Outcome:
             outcome.duration_ms = int((time.monotonic() - started) * 1000)
+            self.last_outcome = outcome
             return outcome
 
         # 1) select：定位目标函数

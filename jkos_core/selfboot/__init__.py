@@ -27,16 +27,28 @@ from jkos_core.selfboot.d3_testgen import (
     pipeline_steps,
     validate_generated_code,
 )
+from jkos_core.selfboot.loop import (
+    DEFAULT_TASK,
+    LOOP_STAGES,
+    LoopResult,
+    PipelineSearcher,
+    SelfBootstrapEngine,
+)
 
 __all__ = [
     "DEFAULT_TARGET",
+    "DEFAULT_TASK",
     "D3_STAGES",
     "D3Executor",
     "D3Outcome",
     "FunctionNotFound",
     "FunctionTarget",
+    "LOOP_STAGES",
+    "LoopResult",
+    "PipelineSearcher",
     "PytestRunner",
     "RunOutcome",
+    "SelfBootstrapEngine",
     "SubprocessPytestRunner",
     "TargetSpecError",
     "deterministic_cases",

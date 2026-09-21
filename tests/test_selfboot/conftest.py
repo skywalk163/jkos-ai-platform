@@ -184,6 +184,25 @@ def llm_json():
     return _make
 
 
+@pytest.fixture
+def make_loop(tmp_path, sample_module):
+    """按需构造四段闭环引擎：数据目录与报告目录都落在 tmp_path（不碰仓库存储）"""
+    from jkos_core.selfboot.loop import SelfBootstrapEngine
+
+    def _make(*, llm=None, runner=None, target=None, threshold=0.5) -> SelfBootstrapEngine:
+        spec = target or f"{sample_module}:label"
+        return SelfBootstrapEngine(
+            llm=llm,
+            executor=D3Executor(
+                runner=runner or FakePytestRunner(), llm=llm, default_target=spec,
+                repo_root=tmp_path, coverage_threshold=threshold),
+            data_dir=str(tmp_path / "data"),
+            report_dir=str(tmp_path / "reports"),
+            target=spec,
+        )
+    return _make
+
+
 @pytest.fixture(autouse=True)
 def _cleanup_tmp_modules():
     """清理样例模块可能留下的模块缓存（本套测试不 import 被测模块，仅防御）"""
