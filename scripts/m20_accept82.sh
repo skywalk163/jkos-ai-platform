@@ -136,12 +136,16 @@ pkill -f 'jkos-server' 2>/dev/null
 sleep 1
 
 echo "== f: M20 旧称与陈旧信息残留扫描 =="
+echo "-- f1: 代码层 + 活跃文档（README / CONTEXT），沿革说明行（原名/更名前）除外 --"
 if grep -rEn 'DSH AI 中台|dsh_core|dsh-server|dsh-plugin' \
-     README.md CONTEXT.md CHANGELOG.md jkos_core tenants server.py pyproject.toml locales 2>/dev/null \
+     README.md CONTEXT.md jkos_core tenants server.py pyproject.toml locales 2>/dev/null \
      | grep -v '原名' | grep -v '更名前'; then
   echo "有残留!"
   exit 1
 fi
 echo "AC2-CLEAN"
+
+echo "-- f2: CHANGELOG 历史条目提及数（历史记录，按 M15「历史文档称谓不变」口径保留） --"
+grep -cE 'dsh_core|dsh-server|dsh-plugin|DSH AI 中台' CHANGELOG.md 2>/dev/null || echo 0
 
 echo "M20-ACCEPT-OK"

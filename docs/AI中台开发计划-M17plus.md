@@ -159,16 +159,37 @@
 
 | 任务 | 优先级 | 预估工时 | 说明 |
 | --- | --- | --- | --- |
-| 20.1 D3 自举脚本 | P0 | 4天 | 探索 → 固化 → 模板化 → 自动化执行闭环 |
-| 20.2 harness 融合 | P0 | 3天 | 在 harness 会话内调用 JKOS 优化引擎 |
-| 20.3 闭环演示 | P1 | 2天 | 端到端演示与复盘报告 |
-| 20.4 README 清理 | P2 | 0.5天 | 清除「DSH AI 中台」旧称残留，统一为 JKOS |
+| 20.1 D3 自举脚本 | P0 | 4天 | ✅ 完成（2026-09-21）：`jkos_core/selfboot/`（d3_testgen 五阶段执行器 + loop 四段闭环编排）+ `scripts/d3_selfboot.py` 演示脚本 |
+| 20.2 harness 融合 | P0 | 3天 | ✅ 完成（2026-09-21）：新增 `dsh_optimize_execute` / `dsh_optimize_stats` 两条 MCP 工具，经 M16 ToolBridge 暴露给 agent（工具数 11 → 13） |
+| 20.3 闭环演示 | P1 | 2天 | ✅ 完成（2026-09-21）：端到端演示 + `docs/M20-自举闭环复盘报告.md`；0.82 验收脚本 `scripts/m20_accept82.sh` |
+| 20.4 README 清理 | P2 | 0.5天 | ✅ 完成（2026-09-21）：README/CONTEXT 旧称与陈旧信息收口（测试数、工具表 8→13、`dsh_core`/`dsh-server` 残留、里程碑表补 M15–M20） |
+
+### 关键实现决策（实施中确认）
+
+1. **缺口定位**：`OptimizationEngine` 的「探索」层原是模拟实现（`automation_engine.py` 按 `EXPLORE_BASE × 子任务数` 假算 Token），与真实 `ExplorationEngine`、`ProcessSolidifier`、`TemplateManager` 之间无胶水代码 —— M20.1 的实质是把这条链路真正打通。
+2. **混合模式**：D3 生成用例时，LLM 可用（`LLMResult.simulated is False`）走真实生成，否则确定性兜底；降级判定基于 `simulated` 而非 `llm is None`（`comps.llm` 永不为 None，无凭据时路由器末尾的 SimulatedProvider 会返回模拟文本）。
+3. **第 4 段不走 `OptimizationEngine.execute()`**：其第一层 Token 缓存按精确 `task` 命中会抢跑成 `source="cache"`，闭环复现会被误判为缓存命中；改为直连 `TemplateManager`（template-first）。
+4. **探索用独立空知识库**：`explore()` 命中知识库时会早退并跳过实验，复用同一库会让第二次运行再也走不到 D3 执行器。
+5. **闭环成立判据含 `template_hit`**：推荐被内置 61 个业务种子模板抢走时不算闭环成立（排序是 `task_kw + 0.5×desc_kw`，种子描述覆盖查询词可超过精确 task 匹配），故演示与验收统一使用有区分度的 task 文案。
 
 ### 产出物
 
-- D3 自举闭环脚本与演示记录
-- harness 融合调用示例
-- README 统一更名后的文档快照
+- D3 自举闭环脚本与演示记录 ✅（`scripts/d3_selfboot.py`，终态 `M20.3-DEMO-OK`；证据 JSON `reports/m20/d3_selfboot_loop.json`）
+- harness 融合调用示例 ✅（MCP 工具 + `scripts/m20_accept82.sh` 段 e 的真实调用验证）
+- README 统一更名后的文档快照 ✅（`README.md` / `CONTEXT.md` 收口；`scripts/**` 与历史计划文档按 M15 口径保留）
+
+### M20 验收
+
+- [x] 四段闭环可跑通：探索 → 固化（`ProcessSolidifier`）→ 模板化（`TemplateManager`）→ 自动化执行（模板复用），四段证据齐备
+- [x] D3 流水线五阶段真实运行：定位函数（ast，不 import 被测模块）→ 用例设计 → 生成（写临时目录）→ 运行 pytest（可注入运行器）→ 覆盖率报告（按被测函数行区间统计）
+- [x] 混合模式双跑：LLM 真实生成路径 + `--no-llm` 确定性兜底路径，两条路径均 `M20.3-DEMO-OK`
+- [x] 生成物安全：语法校验 + 导入白名单（仅 pytest / 本项目 / 被测模块）+ 危险名拒绝，任一层不过即回退确定性模板
+- [x] 量化节省：冷启动基准 7500 Token → 复现 **305 Token（省 95.93%）**；耗时 3.7s → 1ms（省 99.97%）
+- [x] harness 融合：MCP 端点带 token 可见 **13** 个工具（含两条 `dsh_optimize_*`，驼峰字段合规），匿名在严格模式下 401；真实调用两条工具成功
+- [x] 全量回归零退化：本地 py3.14 **1230 passed / 8 skipped / 0 failed**（用例总数 1238 = M19 记录的 1035 + 本轮新增 203，零失败）
+- [x] 覆盖率不低于上一轮：总覆盖率 **93%**（8695 语句 / 572 missing；M19 为 93%，持平）；新增 `jkos_core/selfboot/` 覆盖率 **100%**
+- [x] 0.82 双 venv 复验：`scripts/m20_accept82.sh` 终态 `M20-ACCEPT-OK`
+- [x] 旧称与陈旧信息收口：代码层 + README/CONTEXT 扫描 0 命中（`CHANGELOG` 历史条目按 M15 口径保留）
 
 ---
 

@@ -4,6 +4,51 @@
 > 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义参考 [SemVer](https://semver.org/lang/zh-CN/)。
 > M2-M4 为早期规划实现的里程碑，功能已折叠计入后续里程碑提交，无独立提交记录。
 
+## [M20] 自举第二期（D3 自举闭环）- 2026-09-21（**验收闭环**）
+
+### 新增（20.1 D3 自举闭环）
+- **新增编排层包 `jkos_core/selfboot/`**（消费 `exploration` + `optimization`，与 `bootstrap.py` 的组件装配职责区分）：
+  - `d3_testgen.py`：D3 五阶段执行器（`select → design → generate → run → coverage`），业务内容为**单元测试生成**。用 `ast` 定位目标函数（含类方法与嵌套函数，**不 import 被测模块**）；`PytestRunner` 协议 + `SubprocessPytestRunner` 真实实现（临时目录内 `cwd`、注入 `PYTHONPATH`、**剔除 `PYTEST_ADDOPTS` 防继承仓库 `--cov` 造成递归**、超时即杀进程）；覆盖率按**被测函数行区间**统计，`coverage` 不可用时退化为代理指标并标注 `coverage_source`
+  - `loop.py`：四段闭环编排 `SelfBootstrapEngine`（探索 → 固化 → 模板化 → 自动化执行）+ `PipelineSearcher`（把 D3 五阶段作为唯一方案候选，替代会扫全仓 doc header 充当步骤的 `SolutionSearcher`）
+- **混合模式生成用例**：LLM 可用（`LLMResult.simulated is False`）走真实生成，否则确定性兜底；降级判定基于 `simulated` 而非 `llm is None`（`comps.llm` 为 `LLMRouter`，永不为 None，无凭据时路由末尾 `SimulatedProvider` 返回模拟文本）
+- **生成物三层防护**：`compile` 语法校验 + AST 导入白名单（仅 `pytest` / 本项目包 / 被测模块）+ 危险名与危险模块拒绝（`eval`/`exec`/`open`/`os`/`subprocess` 等），任一层不过即回退确定性模板；生成物**只写 `tempfile.mkdtemp()`，绝不落仓库**
+- **量化口径**：冷启动基准 = `EXPLORE_BASE × max(子任务数, 5 个 D3 阶段)`（与 `AutomationEngine` 探索分支同源）；复现成本取模板执行的 `token_used`。**实测 7500 → 305 Token（省 95.93%），耗时 3745 ms → 1 ms（省 99.97%）**
+
+### 新增（20.2 harness 融合）
+- **两条 MCP 工具**（`jkos_core/mcp/server.py`，工具数 11 → 13）：
+  - `dsh_optimize_execute`：跑完整闭环（命中模板则复用确定性产出，否则真实探索并沉淀模板），返回 `source` / `template_hit` / `savings` 与四段阶段摘要（**不含生成代码正文**，避免撑爆响应）
+  - `dsh_optimize_stats`：模板库条目数 / Token 缓存条目数 / 用量汇总 / 最近执行记录
+- **生命周期**：模块级惰性单例 `get_selfboot_engine(comps)`（仿 `harness/gateway.py` 的 `get_gateway()`），`comps` 取自 `WorkflowEngine.comps`（**不新增构造参数**，`create_app` / `cli.py` 零改动）；`ToolExecutor.cleanup()` 追加 `close_selfboot_engine()` 释放 sqlite 连接
+- **分类与可见性**：`dsh_optimize` 归入既有 `ToolCategory.GOVERNANCE`（**不新增枚举值** —— `registry.get_categories()` 返回枚举全集，会打破工具路由分类数断言）；沿用 `ToolVisibility.CORE`，匿名可见，严格模式下匿名 401
+
+### 新增（20.3 演示与验收）
+- `scripts/d3_selfboot.py`：首次闭环 + 复现 + 统计，输出六条判据的 JSON 证据，终态 `M20.3-DEMO-OK`；`--no-llm` 显式离线路径证明确定性可复现；每次运行使用独立临时数据目录，避免上一轮的探索知识/模板干扰结论
+- `scripts/m20_accept82.sh`：0.82 六段验收（双 venv 全量回归 / `tests/test_selfboot` 独立成册 / 演示双模式 / harness 融合真实调用 / 残留扫描），任一关键段失败即 `exit 1`，终态 `M20-ACCEPT-OK`
+- `docs/M20-自举闭环复盘报告.md`：四段证据、量化对比、混合模式双跑、已知问题与边界
+
+### 🐛 修复（实施中暴露）
+- **`inspect.iscoroutinefunction(实例)` 为 False**：`Experimenter._run_one` 据此区分同步/异步执行器，可调用实例（`__call__` 为 async）会被判为同步丢进 `asyncio.to_thread`，拿到未 await 的协程对象而静默"成功"→ D3 执行器改为传递**绑定方法** `run_as_executor`，并在 docstring 与用例中锁住该契约
+- **`require_approval` 硬编码 `pending_approval=True`**：`AutomationEngine.execute` 在任务已有可推荐模板时直接走模板执行、不挂起审批（既有语义）→ 改为按 `run.meta.status` 如实回传，并补「无模板挂起 / 有模板不挂起」两条用例
+- **闭环成立判据缺 `template_hit`**：仅"四段都 OK + 探索成功"不足以证明引擎学到了该任务（推荐可能被内置种子模板抢走）→ `LoopResult.success` 增加 `template_hit` 条件
+
+### 📄 文档（20.4 旧称与陈旧信息收口）
+- `README.md`：测试徽章与状态由 `789 passed` 更新为实测值；「8 个预定义工具」→ **13**；工具表补齐 `dsh_approval_*`（3）与 `dsh_optimize_*`（2）；`dsh-server` → `jkos-server`（含 CLI 示例）；项目结构与开发命令中的 `dsh_core/` → `jkos_core/`；里程碑表补齐 M15–M20
+- `CONTEXT.md` / 本文件历史条目中的旧称按 M15「历史文档称谓不变」口径保留（`scripts/**` 与历史计划文档同样保留）
+
+### 测试
+- 新增 `tests/test_selfboot/`（6 文件、**203 用例**）：`test_d3_locate`（定位 / 解析 / 路径越界防护）、`test_d3_pipeline`（五阶段 / 安全校验 / 兜底与回退 / 失败两态）、`test_d3_runner`（命令构造 / 环境隔离 / 覆盖率解析 / 超时）、`test_selfboot_loop`（四段顺序 / 模板复用语义 / 节省量化 / 生命周期）、`test_selfboot_mcp`（工具注册 / 可见性 / 端点字段 / 单例 / 真实调用）
+- MCP 兼容性回归（八件套）**214 passed**，工具数 11 → 13 零退化
+- 全量回归：本地 py3.14 **1230 passed / 8 skipped / 0 failed**（用例总数 1238 = M19 记录的 1035 + 本轮新增 203，零失败；8 项 skip 均为需真实 harness sidecar / PostgreSQL / NATS 的环境用例，在 0.82 会转为通过）
+- 覆盖率：总覆盖率 **93%**（8695 语句 / 572 missing；M19 为 93%，持平）；新增 `jkos_core/selfboot/` **100%**（619 语句 / 0 未覆盖）
+
+### ✅ 验收闭环（M20 验收达成，详情见 `docs/M20-自举闭环复盘报告.md`）
+- **四段闭环成立**：`template_hit=True`、复现 `source="template"` 且复用本次新建 `template_id`、四段 `stages` 全 OK
+- **D3 五阶段真实运行**：真跑 pytest 子进程 + 真实覆盖率采集（80.0%，按函数行区间）
+- **混合模式双跑**：LLM 路由模式与 `--no-llm` 均 `M20.3-DEMO-OK`
+- **harness 融合实测**：匿名 401 → 带 token **13** 工具（驼峰合规）→ 真实调用 `dsh_optimize_execute` 闭环成立（省 95.93%）→ 二次调用命中模板
+- **残留收口**：代码层 + README/CONTEXT 扫描 0 命中
+- **0.82 双 venv 复验**：`scripts/m20_accept82.sh` 终态 `M20-ACCEPT-OK`
+
 ## [M19] 基础设施迁移（PostgreSQL + NATS）- 2026-09-20（**验收闭环**）
 
 ### 新增（19.1 PostgreSQL 迁移层真实化）

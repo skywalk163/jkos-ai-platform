@@ -4,9 +4,9 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://img.shields.io/badge/tests-789%20passed-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-1230%20passed-brightgreen)]()
 
-> **品牌说明**：本项目原名「DSH AI 中台」，现更名为**极快AI操作系统**（英文 **Jikuai AI OS**，简称 **JKOS**）。设计路线为结合开源项目 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)（FreeBSD 版）作为 Agent 执行层，在 FreeBSD 系统下构建一整套 AI 服务操作系统；与 deepseek-harness 的深度集成将在后续里程碑落地，当前阶段自研实现为多租户企业服务层（REST / 多租户 MCP 网关 / RBAC / 审计 / 多 LLM 路由）。
+> **品牌说明**：本项目原名「DSH AI 中台」，现更名为**极快AI操作系统**（英文 **Jikuai AI OS**，简称 **JKOS**）。设计路线为结合开源项目 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)（FreeBSD 版）作为 Agent 执行层，在 FreeBSD 系统下构建一整套 AI 服务操作系统；harness 智能中枢已于 M16 落地（默认关闭，`JKOS_HARNESS_ENABLED` 控制），M20 起 JKOS 自举闭环经 MCP 工具桥接暴露给 harness agent，当前阶段同时自研实现多租户企业服务层（REST / 多租户 MCP 网关 / RBAC / 审计 / 多 LLM 路由）。
 
 ## 🚀 快速开始
 
@@ -15,13 +15,13 @@
 pip install -e ".[dev,test]"
 
 # 初始化数据库
-dsh-server init
+jkos-server init
 
 # 启动服务
-dsh-server
+jkos-server
 
 # 或只启动 MCP Server
-dsh-server mcp --port 3000
+jkos-server mcp --port 3000
 ```
 
 ## ✨ 核心特性
@@ -35,7 +35,7 @@ dsh-server mcp --port 3000
 ### Agent 互联
 - **MCP 协议**: 对接 Cursor/Trae/Claude Desktop 等本地 Agent
 - **A2A 协议**: 对接 Dify/Coze/GPTs 等远程 SaaS Agent
-- **8 个预定义工具**: 文本查询、文本生成、OCR、ASR、视频分析、RAG 等
+- **13 个预定义工具**: 文本查询/生成、OCR、ASR、视频分析、RAG、会话、资源、审批（3）、自举优化（2）
 
 ### 企业级特性
 - **确定性优先**: 编解码/转码/OCR/ASR 全部用专用工具，大模型只做语义
@@ -107,13 +107,19 @@ dsh-server mcp --port 3000
 | M12 自动化引擎 | 自动化编排 / 流程固化 / Token 优化 / 模板管理 | `5802bb8`（合入 `80cad99`） |
 | M13 工具标准化 | 工具注册表 / 工具市场元数据 / 可见性域 / 版本管理 / 工具路由 | `5b7c380` |
 | M14 MCP 网关多租户 | 租户级工具可见性 / 租户级配额限流 / 可选认证上下文 / 工具归属管理 | `f825b86` |
+| M15 代码层更名 | 包名更名前 `dsh_core` → 现 `jkos_core`（876 处替换 / 139 文件），品牌统一为 JKOS | `1b4968f` |
+| M16 智能中枢 | harness 集成（配置/运行时/网关/MCP 工具桥接/Web UI 反代），默认关闭 | `f5168b4`, `b5ccbc2` |
+| M17 自动化引擎收官 | optimization 各模块 ≥85% 覆盖 + 基准脚本 + 补勾 M12 验收 | `ffc6929` |
+| M18 产品化 P1 | 三案例演示 / 酒厂生产调度与质量追溯 / 多租户 L2 物理隔离 | `9ba92ae`, `bfd2f6e`, `6b5c095` |
+| M19 基础设施迁移 | 真实 PostgreSQL 迁移（双跑/回滚/切换）+ NATS 总线（内嵌降级） | `7220763` … `4d6a617` |
+| M20 自举第二期 | D3 自举闭环（探索→固化→模板化→自动化）+ MCP 工具暴露 + 旧称收口 | `c3ceef3` … `416c73a` |
 
 ## 📁 项目结构
 
 ```
 dsh-ai-platform/
 ├── pyproject.toml              # 项目配置
-├── dsh_core/                   # 核心代码
+├── jkos_core/                  # 核心代码
 │   ├── __init__.py             # 包初始化
 │   ├── cli.py                  # CLI 入口
 │   ├── plugin_cli.py           # 插件 CLI
@@ -209,20 +215,21 @@ dsh-ai-platform/
 pytest tests/ -v
 
 # 覆盖率报告
-pytest tests/ --cov=dsh_core --cov-report=html
+pytest tests/ --cov=jkos_core --cov-report=html
 
 # 特定测试文件
 pytest tests/test_m8_auth.py
 pytest tests/test_m10_llm.py
 ```
 
-**当前测试状态**: 789 passed ✅
+**当前测试状态**: 1230 passed / 8 skipped（0 failed），行覆盖率 93% ✅
+> 8 项 skip 为需外部环境的用例（harness sidecar / 真实 PostgreSQL / NATS），在部署环境会转为通过。M20 收官数据见 [M20 自举闭环复盘报告](docs/M20-自举闭环复盘报告.md)。
 
 ## 📋 预定义 MCP 工具
 
 | 工具名 | 描述 |
 |--------|------|
-| `dsh_text_query` | 查询 DSH 文本数据 |
+| `dsh_text_query` | 查询文本数据 |
 | `dsh_text_generate` | 大模型文本生成 |
 | `dsh_ocr_extract` | 图片 OCR 文字识别 |
 | `dsh_audio_transcribe` | 语音转文字 (ASR) |
@@ -230,6 +237,11 @@ pytest tests/test_m10_llm.py
 | `dsh_rag_query` | 多模态 RAG 检索 |
 | `dsh_session_list` | 列出对话会话 |
 | `dsh_resource_list` | 列出多模态资源 |
+| `dsh_approval_list` | 列出待审批任务（M1 人工干预） |
+| `dsh_approval_decide` | 提交审批决策（通过 / 驳回） |
+| `dsh_approval_sweep` | 审批超时扫描（low 自动通过 / medium 升级 / high 驳回） |
+| `dsh_optimize_execute` | 执行自举闭环（探索 → 固化 → 模板化 → 自动化执行，M20） |
+| `dsh_optimize_stats` | 优化引擎统计（模板库 / Token 缓存 / 用量 / 最近执行，M20） |
 
 ## 🔧 开发
 
@@ -238,13 +250,13 @@ pytest tests/test_m10_llm.py
 pip install -e ".[dev,test]"
 
 # 代码检查
-ruff check dsh_core/
+ruff check jkos_core/
 
 # 类型检查
-mypy dsh_core/
+mypy jkos_core/
 
 # 格式化
-ruff format dsh_core/
+ruff format jkos_core/
 ```
 
 ## 📚 文档
@@ -255,6 +267,7 @@ ruff format dsh_core/
 - [架构设计](docs/architecture/)
 - [技术设计白皮书](docs/多模态AI-Agent中台-技术设计白皮书.md)
 - [10 周实施计划](docs/多模态AI-Agent中台-实施计划.md)
+- [M20 自举闭环复盘报告](docs/M20-自举闭环复盘报告.md)
 
 ## 📜 License
 
