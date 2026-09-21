@@ -1,0 +1,4 @@
+# POSIX shell scripts must stay LF even on Windows checkouts:
+# 0.82 (FreeBSD /bin/sh) rejects CRLF-terminated scripts (Syntax error: expecting "}" / "done").
+# See docs/M20-自举闭环复盘报告.md 根因记录.
+*.sh text eol=lf
