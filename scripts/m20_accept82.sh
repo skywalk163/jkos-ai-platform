@@ -15,18 +15,36 @@
 cd /data/dsh/code-jkos || exit 1
 PY312=/data/dsh/venv-test312/bin/python
 PY311=/data/dsh/venv-test/bin/python
-export JKOS_MCP_REQUIRE_AUTH=true
+# 注意：JKOS_MCP_REQUIRE_AUTH 只能在段 e 启动 MCP 服务时按进程设置。
+# 若在此处 export，全量回归会带着严格鉴权跑 —— 匿名 MCP 用例（/tools、/mcp
+# 不带 token）会大面积 401 失败（实测 a 段 37 项失败全由此引起）。
+
+# 全量回归断言：必须"0 failed"且"有 passed"，否则整个验收立即失败。
+# 注意不能只看 tail 的结尾（不能有 failed/error 字样出现在汇总行之前就放过）。
+assert_regression() {
+  label="$1"; out="$2"
+  echo "$out" | grep -qE '[0-9]+ passed' || { echo "$label: 未见 passed 汇总"; return 1; }
+  if echo "$out" | grep -qE '[1-9][0-9]* (failed|error)'; then
+    echo "$label: 存在失败用例"
+    return 1
+  fi
+  return 0
+}
 
 echo "== a: venv-test312 (py3.12) 全量回归 =="
-$PY312 -m pytest -p no:cacheprovider -q --no-header 2>&1 | tail -2
+A_OUT=$($PY312 -m pytest -p no:cacheprovider -q --no-header -rf 2>&1)
+echo "$A_OUT" | tail -3
+assert_regression "A(py3.12)" "$A_OUT" || { echo "A-FAIL"; exit 1; }
 
 echo "== b: venv-test (py3.11) 全量回归 =="
-$PY311 -m pytest -p no:cacheprovider -q --no-header 2>&1 | tail -2
+B_OUT=$($PY311 -m pytest -p no:cacheprovider -q --no-header -rf 2>&1)
+echo "$B_OUT" | tail -3
+assert_regression "B(py3.11)" "$B_OUT" || { echo "B-FAIL"; exit 1; }
 
 echo "== c: M20 自举闭环独立测试册 =="
-C_OUT=$($PY312 -m pytest tests/test_selfboot -q --no-header -p no:cacheprovider 2>&1 | tail -2)
-echo "$C_OUT"
-echo "$C_OUT" | grep -qE '[0-9]+ passed' || { echo "C-FAIL"; exit 1; }
+C_OUT=$($PY312 -m pytest tests/test_selfboot -q --no-header -p no:cacheprovider -rf 2>&1)
+echo "$C_OUT" | tail -3
+assert_regression "C(selfboot)" "$C_OUT" || { echo "C-FAIL"; exit 1; }
 
 echo "== d: D3 闭环演示（默认 LLM 路由模式） =="
 D_OUT=$($PY312 scripts/d3_selfboot.py --out /tmp/m20_demo_loop.json 2>&1)

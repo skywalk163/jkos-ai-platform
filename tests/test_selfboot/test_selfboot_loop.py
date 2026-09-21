@@ -218,11 +218,18 @@ class TestSavings:
         await engine.close()
 
     @pytest.mark.asyncio
-    async def test_duration_saved_ratio_positive(self, make_loop):
+    async def test_duration_fields_are_reported(self, make_loop):
+        """耗时字段如实上报；**不**断言节省比下界 —— 用 Fake 运行器时首次与复现
+        都在亚毫秒量级，`first_ms` 可能等于 `replay_ms`，比值属计时噪声（0.82
+        上即为 replay 2ms > first 1ms 的负值）。真正稳定的节省保证由
+        `token_saved_ratio > 0.9` 承担（见 TestSavings），演示脚本另有实测断言。
+        """
         engine = make_loop()
         result = await engine.run_loop(SAME_TASK)
-        assert result.savings["first_duration_ms"] > 0
-        assert 0.0 <= result.savings["duration_saved_ratio"] <= 1.0
+        assert result.savings["first_duration_ms"] >= 0
+        assert result.savings["replay_duration_ms"] >= 0
+        assert isinstance(result.savings["duration_saved_ratio"], float)
+        assert result.savings["duration_saved_ratio"] <= 1.0
         await engine.close()
 
 
