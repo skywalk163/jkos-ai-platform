@@ -51,6 +51,10 @@ def _default_tool_category(tool_name: str) -> ToolCategory:
         return ToolCategory.SESSION
     if tool_name.startswith("dsh_resource") or tool_name.startswith("dsh_approval"):
         return ToolCategory.GOVERNANCE
+    if tool_name.startswith("dsh_optimize"):
+        # M20 自举闭环：优化/自举属治理范畴。注意不能新增 ToolCategory 枚举值 ——
+        # registry.get_categories() 返回枚举全集，新增会打破工具路由的分类数断言。
+        return ToolCategory.GOVERNANCE
     return ToolCategory.CUSTOM
 
 
@@ -229,10 +233,86 @@ PREDEFINED_TOOLS: List[MCPTool] = [
         description="审批超时扫描（§8.2.2）：low 自动通过 / medium 升级 / high 自动驳回",
         input_schema={"type": "object", "properties": {}},
     ),
+    MCPTool(
+        name="dsh_optimize_execute",
+        description=(
+            "调用 JKOS 自动化优化引擎执行任务（M20 自举闭环）：命中模板/缓存则复用"
+            "确定性产出，否则走真实探索（探索→固化→模板化→自动化执行）并沉淀模板。"
+            "返回 source / template_hit / token_used 与节省比。"
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "task": {
+                    "type": "string", "description": "待执行任务描述",
+                    "min_length": 1, "max_length": 2000,
+                },
+                "target": {
+                    "type": "string",
+                    "description": "D3 目标函数（<模块>:<限定名>），缺省用平台内置示例目标",
+                },
+                "require_approval": {
+                    "type": "boolean", "description": "是否先挂起等待人工审批",
+                    "default": False,
+                },
+            },
+            "required": ["task"],
+        },
+    ),
+    MCPTool(
+        name="dsh_optimize_stats",
+        description=(
+            "查询 JKOS 优化引擎统计：模板库条目数、Token 缓存条目数、用量汇总与最近执行记录。"
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer", "description": "返回的最近执行记录条数",
+                    "default": 5,
+                },
+            },
+        },
+    ),
 ]
 
 
 # ─── 工具执行器 ───
+
+# M20 自举闭环引擎：进程内惰性单例（含 sqlite 连接与临时目录，须在 cleanup 释放）
+_selfboot_engine: Optional[Any] = None
+
+
+async def get_selfboot_engine(comps: Optional[Any] = None):
+    """获取自举闭环引擎单例（首次调用时构造并 initialize）
+
+    `comps` 仅用于取 `comps.llm`；缺省时 llm 为空，D3 自动走确定性兜底路径，
+    工具仍然可用 —— 这也是离线环境下 dsh_optimize_execute 能跑通的原因。
+    """
+    global _selfboot_engine
+    if _selfboot_engine is None:
+        from jkos_core.selfboot.loop import SelfBootstrapEngine
+
+        _selfboot_engine = SelfBootstrapEngine(comps=comps)
+        await _selfboot_engine.initialize()
+    return _selfboot_engine
+
+
+async def close_selfboot_engine() -> None:
+    """关闭并释放自举闭环引擎单例（幂等）"""
+    global _selfboot_engine
+    if _selfboot_engine is not None:
+        try:
+            await _selfboot_engine.close()
+        finally:
+            _selfboot_engine = None
+
+
+def reset_selfboot_engine() -> None:
+    """丢弃单例引用（测试隔离用；不负责关闭底层资源）"""
+    global _selfboot_engine
+    _selfboot_engine = None
+
 
 class ToolExecutor:
     """工具执行器 - 实现真实工具逻辑"""
@@ -268,6 +348,10 @@ class ToolExecutor:
                 result = await self._execute_approval_decide(arguments)
             elif tool_name == "dsh_approval_sweep":
                 result = await self._execute_approval_sweep(arguments)
+            elif tool_name == "dsh_optimize_execute":
+                result = await self._execute_optimize_execute(arguments)
+            elif tool_name == "dsh_optimize_stats":
+                result = await self._execute_optimize_stats(arguments)
             else:
                 return MCPToolResult(
                     content=None,
@@ -537,10 +621,67 @@ class ToolExecutor:
         engine = self._require_engine()
         handled = await engine.sweep_timeouts()
         return MCPToolResult(content={"handled": handled})
-    
+
+    # ---------- M20 自举闭环 ----------
+
+    async def _execute_optimize_execute(self, arguments: Dict[str, Any]) -> MCPToolResult:
+        """执行自举闭环（探索 → 固化 → 模板化 → 自动化执行）
+
+        响应只回传 LoopResult 摘要，**不回传生成的用例代码正文** —— 避免撑爆 MCP 响应。
+        """
+        task = str(arguments.get("task") or "").strip()
+        if not task:
+            return MCPToolResult(content=None, is_error=True,
+                                 error_message="task 不能为空")
+        target = arguments.get("target") or None
+        if arguments.get("require_approval"):
+            # 人工审批点：交给优化引擎的审批队列。注意 AutomationEngine 的既有语义 ——
+            # 若该任务已有可推荐模板，会直接走模板执行而不挂起；故按实际状态回传，
+            # 不能硬编码 pending_approval=True。
+            engine = await get_selfboot_engine(self._selfboot_comps())
+            run = await engine.optimization.automation.execute(
+                task, require_approval=True)
+            return MCPToolResult(content={
+                "task": task, "source": run.source, "success": run.success,
+                "pending_approval": run.meta.get("status") == "pending_approval",
+                "summary": run.summary, "run_id": run.run_id,
+            })
+        engine = await get_selfboot_engine(self._selfboot_comps())
+        result = await engine.run_loop(task, target=target)
+        payload = result.to_dict()
+        return MCPToolResult(content={
+            "task": payload["task"],
+            "target": payload["target"],
+            "success": payload["success"],
+            "template_hit": payload["template_hit"],
+            "process_id": payload["process_id"],
+            "template_id": payload["template_id"],
+            "source": (payload["replay_run"] or {}).get("source", ""),
+            "token_used": (payload["replay_run"] or {}).get("token_used", 0),
+            "savings": payload["savings"],
+            "llm": payload["llm"],
+            "stages": [
+                {"name": s["name"], "ok": s["ok"], "detail": s["detail"]}
+                for s in payload["stages"]
+            ],
+            "detail": payload["detail"],
+        })
+
+    async def _execute_optimize_stats(self, arguments: Dict[str, Any]) -> MCPToolResult:
+        """查询优化引擎统计（模板库 / Token 缓存 / 用量 / 最近执行）"""
+        limit = int(arguments.get("limit", 5) or 5)
+        engine = await get_selfboot_engine(self._selfboot_comps())
+        return MCPToolResult(content=await engine.stats(limit=limit))
+
+    def _selfboot_comps(self):
+        """取组件装配对象（自举引擎据此获得 comps.llm；缺省返回 None 走离线兜底）"""
+        return getattr(self._engine, "comps", None)
+
     async def cleanup(self):
         """清理"""
         await self._http_client.aclose()
+        # 自举单例持有 sqlite 连接与临时目录，必须在此释放（MCPServer.cleanup 已调用本方法）
+        await close_selfboot_engine()
 
 
 # ─── MCP Client ───

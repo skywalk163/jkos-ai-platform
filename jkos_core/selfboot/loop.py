@@ -334,7 +334,12 @@ class SelfBootstrapEngine:
         }
 
         result.duration_ms = int((time.monotonic() - started) * 1000)
-        result.success = all(s["ok"] for s in result.stages) and explore.success
+        # 闭环成立 = 四段都过 + 探索成功 + 复现用的确实是本次新建的模板。
+        # 若模板库里的既有模板（内置 61 个业务种子模板）分数更高而被推荐走，
+        # 说明「引擎学到了这个任务」并未被证明 —— 此时 task 文案需更具区分度，
+        # 或改用 recommend_template 命中失败的既有模板语义。
+        result.success = (all(s["ok"] for s in result.stages)
+                          and explore.success and result.template_hit)
         result.detail = (
             f"闭环{'成立' if result.success else '未成立'}："
             f"探索→固化({result.process_id})→模板({result.template_id})→复现"
