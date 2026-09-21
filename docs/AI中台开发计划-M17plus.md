@@ -188,7 +188,7 @@
 - [x] harness 融合：MCP 端点带 token 可见 **13** 个工具（含两条 `dsh_optimize_*`，驼峰字段合规），匿名在严格模式下 401；真实调用两条工具成功
 - [x] 全量回归零退化：本地 py3.14 **1230 passed / 8 skipped / 0 failed**（用例总数 1238 = M19 记录的 1035 + 本轮新增 203，零失败）
 - [x] 覆盖率不低于上一轮：总覆盖率 **93%**（8695 语句 / 572 missing；M19 为 93%，持平）；新增 `jkos_core/selfboot/` 覆盖率 **100%**
-- [x] 0.82 双 venv 复验：`scripts/m20_accept82.sh` 终态 `M20-ACCEPT-OK`
+- [x] 0.82 双 venv 复验：py3.12 **1229 passed / 9 skipped / 0 failed**、py3.11 **1229 passed / 9 skipped / 0 failed**（覆盖率均 93%），`scripts/m20_accept82.sh` 终态 `M20-ACCEPT-OK`（exit 0）；`tests/test_selfboot` 203 passed
 - [x] 旧称与陈旧信息收口：代码层 + README/CONTEXT 扫描 0 命中（`CHANGELOG` 历史条目按 M15 口径保留）
 
 ---

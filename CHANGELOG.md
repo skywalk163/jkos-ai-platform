@@ -47,7 +47,7 @@
 - **混合模式双跑**：LLM 路由模式与 `--no-llm` 均 `M20.3-DEMO-OK`
 - **harness 融合实测**：匿名 401 → 带 token **13** 工具（驼峰合规）→ 真实调用 `dsh_optimize_execute` 闭环成立（省 95.93%）→ 二次调用命中模板
 - **残留收口**：代码层 + README/CONTEXT 扫描 0 命中
-- **0.82 双 venv 复验**：`scripts/m20_accept82.sh` 终态 `M20-ACCEPT-OK`
+- **0.82 双 venv 复验**：py3.12 / py3.11 均 **1229 passed / 9 skipped / 0 failed**（覆盖率 93%），`tests/test_selfboot` 203 passed，`scripts/m20_accept82.sh` 终态 `M20-ACCEPT-OK`（exit 0）
 
 ## [M19] 基础设施迁移（PostgreSQL + NATS）- 2026-09-20（**验收闭环**）
 
