@@ -6,6 +6,13 @@ FreeBSD 关键点：官方 `deepseek-harness-runtime-bin` 没有 FreeBSD wheel�
 SDK 仅在 dsh_bin 为 None 时才导入 deepseek_harness_runtime
 （python/sdk/src/deepseek_harness/client.py:459-469），因此显式传入 dsh_bin
 即可完全绕开该依赖、使用 0.82 源码构建的 launcher。
+
+跟踪版本：deepseek-harness FreeBSD fork 已合并上游 `v0.1.7-alpha.1`
+（fork 合并提交 c6f6511e33 ← upstream rel/dsh-0.1.7-alpha.1 / PR #4901 / release 112ce776ac）。
+2026-09-23 复核：该合并仅改动 SDK tests/（+395/-21），src/ 接口零变化，
+本模块 `_default_client_factory` 传参与 `DeepSeekHarnessConfig` 仍逐项对齐，无需改码；
+部署侧（0.82）重装 SDK 并重建 launcher 后，重跑
+tests/test_harness_integration.py（JKOS_HARNESS_INTEGRATION=1）复验。
 """
 from __future__ import annotations
 

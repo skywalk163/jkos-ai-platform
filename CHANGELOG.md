@@ -4,6 +4,14 @@
 > 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义参考 [SemVer](https://semver.org/lang/zh-CN/)。
 > M2-M4 为早期规划实现的里程碑，功能已折叠计入后续里程碑提交，无独立提交记录。
 
+## [Unreleased] 跟踪 deepseek-harness FreeBSD fork 上游 0.1.7-alpha.1 - 2026-09-23
+
+### 依赖对齐（harness 集成复核，零代码改动）
+- **JKOS harness 集成跟踪 deepseek-harness FreeBSD fork 上游 `0.1.7-alpha.1`**（fork 合并提交 `c6f6511e33` = 合并 upstream PR #4901 `rel/dsh-0.1.7-alpha.1`，release 提交 `112ce776ac`）：
+  - 该合并对 `python/sdk` 仅改动 5 个 **tests/** 文件（+395/-21），**SDK `src/` 公开接口零变化**（高层 `DeepSeekHarness.run()/close()`、`DeepSeekHarnessConfig` kwargs、`client.py:458-486 _default_launch_args` 与 JKOS `_default_client_factory` 逐项对齐）；
+  - **JKOS harness 模块（M16/M20）代码零改动**；`tests/test_harness_integration.py` 断言的是事件类型与 `finish_reason`，与 SDK 版本无关；
+  - **部署侧复验（主机 192.168.0.82）**：重装 `deepseek-harness-sdk`（`pip install --no-deps deepseek-harness-sdk`）、重建源码构建的 launcher、重跑 `scripts/m20_accept82.sh` 与 `tests/test_harness_integration.py`（`JKOS_HARNESS_INTEGRATION=1`）。
+
 ## [M20] 自举第二期（D3 自举闭环）- 2026-09-21（**验收闭环**）
 
 ### 新增（20.1 D3 自举闭环）

@@ -4,6 +4,11 @@ harness（deepseek-harness）以 SDK sidecar 形态被 JKOS 托管：凭据由 J
 注入子进程，harness 自身不落密钥文件。默认关闭（JKOS_HARNESS_ENABLED=false），
 保证既有功能零回归。
 
+跟踪版本（2026-09-23 复核）：deepseek-harness FreeBSD fork 已合并上游
+`v0.1.7-alpha.1`（fork 合并提交 `c6f6511e33`）。该合并仅改动 SDK tests/，
+src/ 接口零变化，本模块字段与 `DeepSeekHarnessConfig` kwargs 仍逐项对齐，无需改码；
+部署侧（0.82）重装 `deepseek-harness-sdk` 并重建 launcher 后复验集成测试即可。
+
 设计依据：.claude/artifacts/plans/m16-harness-intelligent-hub.md（ADR）
 """
 from __future__ import annotations
