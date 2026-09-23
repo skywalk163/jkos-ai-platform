@@ -488,3 +488,204 @@ class ApprovalTaskRepo:
         row["escalated_to"] = _loads(row.get("escalated_to"))
         return row
 
+
+# ─── 资源配置 / 数据库连通管理（V3）───
+
+RESOURCE_ACTIVE = "active"
+RESOURCE_DISABLED = "disabled"
+RESOURCE_STATUSES = (RESOURCE_ACTIVE, RESOURCE_DISABLED)
+
+
+class ResourceRepo:
+    """资源配置仓储（V3 §8.3.4）
+
+    对应表：resource（资源配置登记）、connection_check（连通检测记录，只追加）。
+    config_json / detail_json 在仓储边界编解码，上层只见 dict。
+    """
+
+    def __init__(self, db: Database) -> None:
+        self.db = db
+
+    @staticmethod
+    def _decode(row: Dict[str, Any]) -> Dict[str, Any]:
+        row["config"] = _loads(row.pop("config_json"))
+        return row
+
+    def get(self, resource_id: str) -> Optional[Dict[str, Any]]:
+        """按 id 查资源配置；不存在返回 None"""
+        row = self.db.query_one(
+            "SELECT * FROM resource WHERE id = ?", (resource_id,)
+        )
+        return self._decode(row) if row else None
+
+    def get_by_name(self, tenant_id: str, name: str) -> Optional[Dict[str, Any]]:
+        """按 租户 + 名称 查配置（唯一索引 idx_resource_tenant_name），用于创建去重"""
+        row = self.db.query_one(
+            "SELECT * FROM resource WHERE tenant_id = ? AND name = ?",
+            (tenant_id, name),
+        )
+        return self._decode(row) if row else None
+
+    def create(
+        self,
+        tenant_id: str,
+        name: str,
+        kind: str,
+        *,
+        config: Optional[Dict[str, Any]] = None,
+        category: str = "general",
+        created_by: str = "system",
+    ) -> Dict[str, Any]:
+        """登记资源配置；名称在租户内唯一，默认 active"""
+        resource_id = new_ulid()
+        now = utc_now()
+        self.db.execute(
+            "INSERT INTO resource (id, tenant_id, name, kind, category, config_json, status, "
+            "created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                resource_id,
+                tenant_id,
+                name,
+                kind,
+                category,
+                _dumps(config or {}),
+                RESOURCE_ACTIVE,
+                created_by,
+                now,
+                now,
+            ),
+        )
+        return self.get(resource_id)  # type: ignore[return-value]
+
+    def ensure(
+        self,
+        tenant_id: str,
+        name: str,
+        kind: str,
+        *,
+        config: Optional[Dict[str, Any]] = None,
+        created_by: str = "system",
+    ) -> Dict[str, Any]:
+        """幂等登记：同名配置已存在则直接返回，否则创建"""
+        existing = self.get_by_name(tenant_id, name)
+        if existing is not None:
+            return existing
+        return self.create(tenant_id, name, kind, config=config, created_by=created_by)
+
+    def list_all(
+        self,
+        *,
+        tenant_id: Optional[str] = None,
+        kind: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """列出资源配置：可选按租户 / 类型过滤，新建在前"""
+        where: List[str] = []
+        params: List[Any] = []
+        if tenant_id is not None:
+            where.append("tenant_id = ?")
+            params.append(tenant_id)
+        if kind is not None:
+            where.append("kind = ?")
+            params.append(kind)
+        sql = "SELECT * FROM resource"
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+        rows = self.db.query(sql, tuple(params))
+        return [self._decode(row) for row in rows]
+
+    def update_config(self, resource_id: str, config: Dict[str, Any]) -> Dict[str, Any]:
+        """整体替换连接参数；返回更新后的配置"""
+        self.db.execute(
+            "UPDATE resource SET config_json = ?, updated_at = ? WHERE id = ?",
+            (_dumps(config), utc_now(), resource_id),
+        )
+        return self.get(resource_id)  # type: ignore[return-value]
+
+    def set_status(self, resource_id: str, status: str) -> Dict[str, Any]:
+        """启用 / 停用配置；返回更新后的配置"""
+        self.db.execute(
+            "UPDATE resource SET status = ?, updated_at = ? WHERE id = ?",
+            (status, utc_now(), resource_id),
+        )
+        return self.get(resource_id)  # type: ignore[return-value]
+
+    def record_check(
+        self,
+        tenant_id: str,
+        resource_id: str,
+        kind: str,
+        connected: bool,
+        latency_ms: int,
+        detail: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """追加一条连通检测记录；返回检测记录 id（只追加）"""
+        check_id = new_ulid()
+        self.db.execute(
+            "INSERT INTO connection_check (id, resource_id, tenant_id, kind, connected, "
+            "latency_ms, detail_json, checked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                check_id,
+                resource_id,
+                tenant_id,
+                kind,
+                1 if connected else 0,
+                latency_ms,
+                _dumps(detail),
+                utc_now(),
+            ),
+        )
+        return check_id
+
+    def list_checks(
+        self, resource_id: str, *, limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """按时间倒序列出连通记录（最新在前）"""
+        rows = self.db.query(
+            "SELECT * FROM connection_check WHERE resource_id = ? "
+            "ORDER BY checked_at DESC, rowid DESC LIMIT ?",
+            (resource_id, limit),
+        )
+        out: List[Dict[str, Any]] = []
+        for row in rows:
+            row["detail"] = _loads(row.pop("detail_json"))
+            out.append(row)
+        return out
+
+    def delete(self, resource_id: str) -> bool:
+        """删除配置；先清理连通记录（schema 外键未级联）"""
+        self.db.execute(
+            "DELETE FROM connection_check WHERE resource_id = ?", (resource_id,)
+        )
+        self.db.execute("DELETE FROM resource WHERE id = ?", (resource_id,))
+        return True
+
+    def stats(self, tenant_id: str) -> Dict[str, Any]:
+        """配置统计：总数 / 分状态 / 连通检测计数（V3 §8.3.4）"""
+        total = self.db.query_one(
+            "SELECT COUNT(*) AS c FROM resource WHERE tenant_id = ?", (tenant_id,)
+        )["c"]
+        by_status = {
+            row["status"]: row["c"]
+            for row in self.db.query(
+                "SELECT status, COUNT(*) AS c FROM resource "
+                "WHERE tenant_id = ? GROUP BY status",
+                (tenant_id,),
+            )
+        }
+        checks_total = self.db.query_one(
+            "SELECT COUNT(*) AS c FROM connection_check WHERE tenant_id = ?", (tenant_id,)
+        )["c"]
+        checks_ok = self.db.query_one(
+            "SELECT COUNT(*) AS c FROM connection_check "
+            "WHERE tenant_id = ? AND connected = 1",
+            (tenant_id,),
+        )["c"]
+        return {
+            "total": total,
+            "by_status": by_status,
+            "checks_total": checks_total,
+            "checks_ok": checks_ok,
+        }

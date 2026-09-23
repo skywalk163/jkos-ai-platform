@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from jkos_core.audit import AuditLogger
 from jkos_core.auth.dependencies import AuthConfig, JWTManager, configure_auth
 from jkos_core.cache.manager import CacheManager, MemoryCache
-from jkos_core.db import ApprovalTaskRepo, Database, DatabaseConfig, LlmUsageRepo, TenantRepo, WorkflowRepo
+from jkos_core.db import ApprovalTaskRepo, Database, DatabaseConfig, LlmUsageRepo, ResourceRepo, TenantRepo, WorkflowRepo
 from jkos_core.db.tenant_schema import (
     IsolationLevel,
     TenantIsolationConfig,
@@ -47,6 +47,7 @@ class AppComponents:
     llm: LLMRouter
     jwt: JWTManager
     approvals: Optional[ApprovalTaskRepo] = None  # M1 审批仓储
+    resources: Optional[ResourceRepo] = None  # V3 资源配置仓储
     notify: Optional[NotificationManager] = None  # M3 通知管理器
     cache: Optional[CacheManager] = None  # M3 缓存管理器
     metrics: Optional[DSHMetrics] = None  # M3 指标收集器
@@ -97,6 +98,7 @@ class AppComponents:
                 tenants=TenantRepo(db),
                 workflows=WorkflowRepo(db),
                 approvals=ApprovalTaskRepo(db),
+                resources=ResourceRepo(db),
                 audit=AuditLogger(db),
                 llm=self.llm,
                 jwt=self.jwt,
@@ -223,6 +225,7 @@ def build_components(db_path: Optional[str] = None, init_auth: bool = True) -> A
         db=db, tenants=TenantRepo(db), workflows=WorkflowRepo(db),
         audit=audit, llm=llm, jwt=jwt_manager,
         approvals=ApprovalTaskRepo(db),
+        resources=ResourceRepo(db),
         notify=notify,
         cache=cache,
         metrics=metrics,

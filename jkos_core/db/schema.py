@@ -173,4 +173,46 @@ MIGRATION_V2 = (
     ],
 )
 
-MIGRATIONS = [MIGRATION_V1, MIGRATION_V2]
+# ─── 资源配置 / 数据库连通管理（V3）───
+# resource: 资源配置登记（sqlite/postgres/mysql/redis/mongodb/http）
+#   status: active/disabled；config_json 存连接参数（仓储层编解码）
+# connection_check: 连通性检测记录（运维看板数据源，只追加）
+#   connected: 1=成功 0=失败；detail_json 记录错误信息与脱敏参数
+MIGRATION_V3 = (
+    3,
+    "资源配置与数据库连通管理: resource / connection_check",
+    [
+        """
+        CREATE TABLE resource (
+            id            TEXT PRIMARY KEY,
+            tenant_id     TEXT NOT NULL,
+            name          TEXT NOT NULL,
+            kind          TEXT NOT NULL,
+            category      TEXT NOT NULL DEFAULT 'general',
+            config_json   TEXT NOT NULL DEFAULT '{}',
+            status        TEXT NOT NULL DEFAULT 'active',
+            created_by    TEXT NOT NULL DEFAULT 'system',
+            created_at    TEXT NOT NULL,
+            updated_at    TEXT NOT NULL
+        )
+        """,
+        "CREATE UNIQUE INDEX idx_resource_tenant_name ON resource(tenant_id, name)",
+        "CREATE INDEX idx_resource_kind_status ON resource(kind, status)",
+        """
+        CREATE TABLE connection_check (
+            id          TEXT PRIMARY KEY,
+            resource_id TEXT NOT NULL REFERENCES resource(id),
+            tenant_id   TEXT NOT NULL,
+            kind        TEXT NOT NULL,
+            connected   INTEGER NOT NULL,
+            latency_ms  INTEGER NOT NULL DEFAULT 0,
+            detail_json TEXT,
+            checked_at  TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX idx_conn_check_resource ON connection_check(resource_id, checked_at)",
+        "CREATE INDEX idx_conn_check_tenant ON connection_check(tenant_id, checked_at)",
+    ],
+)
+
+MIGRATIONS = [MIGRATION_V1, MIGRATION_V2, MIGRATION_V3]

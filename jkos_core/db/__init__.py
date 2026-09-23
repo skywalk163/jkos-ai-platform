@@ -4,8 +4,19 @@
 PostgreSQL 迁移条件：写入 >50/s 或需要多机写。
 
 设计文档映射：§2.6 数据模型（ULID 主键）、§8.3.4 数据一致性。
+V3 新增：资源配置 / 数据库连通管理（resource、connection_check + DatabaseConnector）。
 """
 from jkos_core.db.connection import ConnectionPool, Database, DatabaseConfig, utc_now
+from jkos_core.db.connectivity import (
+    RESOURCE_KIND_HTTP,
+    RESOURCE_KIND_MONGODB,
+    RESOURCE_KIND_MYSQL,
+    RESOURCE_KIND_POSTGRES,
+    RESOURCE_KIND_REDIS,
+    RESOURCE_KIND_SQLITE,
+    RESOURCE_KINDS,
+    DatabaseConnector,
+)
 from jkos_core.db.repos import (
     APPROVAL_MODES,
     INSTANCE_CANCELLED,
@@ -19,6 +30,9 @@ from jkos_core.db.repos import (
     MODE_ALL,
     MODE_ANY,
     MODE_SERIAL,
+    RESOURCE_ACTIVE,
+    RESOURCE_DISABLED,
+    RESOURCE_STATUSES,
     RISKS,
     RISK_HIGH,
     RISK_LOW,
@@ -37,6 +51,7 @@ from jkos_core.db.repos import (
     ApprovalTaskRepo,
     AuditRepo,
     LlmUsageRepo,
+    ResourceRepo,
     TenantRepo,
     WorkflowRepo,
 )
@@ -72,6 +87,7 @@ __all__ = [
     "AuditRepo",
     "LlmUsageRepo",
     "ApprovalTaskRepo",
+    "ResourceRepo",
     # 审批任务常量（M1 1.4，§8.2）
     "TASK_PENDING",
     "TASK_APPROVED",
@@ -85,7 +101,19 @@ __all__ = [
     "MODE_ALL",
     "MODE_ANY",
     "APPROVAL_MODES",
-    # 版本化迁移（M1：V1 基础表 + V2 审批任务表）
+    # 资源配置 / 数据库连通管理（V3）
+    "DatabaseConnector",
+    "RESOURCE_KINDS",
+    "RESOURCE_KIND_SQLITE",
+    "RESOURCE_KIND_POSTGRES",
+    "RESOURCE_KIND_MYSQL",
+    "RESOURCE_KIND_REDIS",
+    "RESOURCE_KIND_MONGODB",
+    "RESOURCE_KIND_HTTP",
+    "RESOURCE_ACTIVE",
+    "RESOURCE_DISABLED",
+    "RESOURCE_STATUSES",
+    # 版本化迁移（M1：V1 基础表 + V2 审批任务表；V3 资源/连通表）
     "MIGRATIONS",
     # 工作流状态机常量（0.2 引擎使用）
     "INSTANCE_PENDING",

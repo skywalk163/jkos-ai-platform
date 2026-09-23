@@ -6,11 +6,18 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, FastAPI, HTTPException, Depends
+from fastapi import APIRouter, FastAPI, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from jkos_core.auth.dependencies import get_tenant_context
+from jkos_core.auth.dependencies import get_optional_context, get_tenant_context
+from jkos_core.db import (
+    RESOURCE_ACTIVE,
+    RESOURCE_DISABLED,
+    RESOURCE_KINDS,
+    DatabaseConnector,
+    ResourceRepo,
+)
 from jkos_core.workflow.engine import WorkflowEngine, WorkflowError
 
 logger = logging.getLogger("dsh.api")
@@ -66,6 +73,19 @@ class MessageSendRequest(BaseModel):
     """发送消息请求"""
     role: str = Field(..., description="消息角色: user/assistant")
     content: str = Field(..., description="消息内容")
+
+
+class ResourceCreateRequest(BaseModel):
+    """资源配置创建（V3 §8.3.4）"""
+    name: str = Field(..., description="资源名称（租户内唯一）")
+    kind: str = Field(..., description="资源类型")
+    config: Dict[str, Any] = Field(default_factory=dict, description="连接参数")
+
+
+class ResourceUpdateRequest(BaseModel):
+    """资源配置更新（V3 §8.3.4）"""
+    config: Optional[Dict[str, Any]] = Field(None, description="连接参数")
+    status: Optional[str] = Field(None, description="状态 active/disabled")
 
 
 # ─── API 路由 ───
@@ -164,30 +184,141 @@ def create_api_router(engine: Optional[WorkflowEngine] = None, *,
         """列出消息"""
         return {"messages": [], "total": 0}
 
-    # ─── 资源管理 ───
-    @router.post("/resources/upload")
-    async def upload_resource(
-        category: str,
-        file_name: str,
-        file_size: Optional[int] = None,
+    # ─── 资源配置与数据库连通（V3 §8.3.4）───
+
+    def _resource_repo(ctx: Any = None) -> ResourceRepo:
+        """解析资源配置仓储；未装配时 503"""
+        eng = _require_engine(ctx)
+        comps = getattr(eng, "comps", None)
+        repo = getattr(comps, "resources", None) if comps is not None else None
+        if repo is None:
+            raise HTTPException(status_code=503, detail="资源配置仓储未装配")
+        return repo
+
+    def _resource_tenant(ctx: Any = None) -> str:
+        """解析资源所属租户；匿名回落 system"""
+        tid = getattr(ctx, "tenant_id", None) if ctx is not None else None
+        return tid or "system"
+
+    @router.post("/resources")
+    async def create_resource(
+        req: ResourceCreateRequest,
+        ctx: Any = Depends(get_optional_context),
     ):
-        """上传资源"""
-        resource_id = uuid.uuid4().hex[:16]
-        return {"id": resource_id, "category": category, "status": "uploading"}
+        """创建资源配置"""
+        if req.kind not in RESOURCE_KINDS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"不支持的资源类型: {req.kind}（可选 {', '.join(RESOURCE_KINDS)}）",
+            )
+        repo = _resource_repo(ctx)
+        tenant_id = _resource_tenant(ctx)
+        if repo.get_by_name(tenant_id, req.name) is not None:
+            raise HTTPException(status_code=409, detail="资源配置已存在")
+        resource = repo.create(
+            tenant_id, req.name, req.kind,
+            config=req.config or {}, created_by=_resource_tenant(ctx),
+        )
+        return {"resource": resource}
 
     @router.get("/resources")
     async def list_resources(
-        category: Optional[str] = None,
-        user_id: Optional[str] = None,
-        limit: int = 20,
+        kind: Optional[str] = None,
+        limit: int = Query(100, ge=1, le=1000),
+        ctx: Any = Depends(get_optional_context),
     ):
-        """列出资源"""
-        return {"resources": [], "total": 0}
+        """列出资源配置"""
+        repo = _resource_repo(ctx)
+        items = repo.list_all(tenant_id=_resource_tenant(ctx), kind=kind, limit=limit)
+        return {"resources": items, "total": len(items)}
+
+    @router.get("/resources/stats")
+    async def resource_stats(ctx: Any = Depends(get_optional_context)):
+        """资源配置统计"""
+        repo = _resource_repo(ctx)
+        return {"stats": repo.stats(tenant_id=_resource_tenant(ctx))}
+
+    @router.get("/resources/{resource_id}")
+    async def get_resource(
+        resource_id: str,
+        ctx: Any = Depends(get_optional_context),
+    ):
+        """获取配置详情"""
+        repo = _resource_repo(ctx)
+        resource = repo.get(resource_id)
+        if resource is None:
+            raise HTTPException(status_code=404, detail="资源配置不存在")
+        return {"resource": resource}
+
+    @router.put("/resources/{resource_id}")
+    async def update_resource(
+        resource_id: str,
+        req: ResourceUpdateRequest,
+        ctx: Any = Depends(get_optional_context),
+    ):
+        """更新配置（config / status）"""
+        repo = _resource_repo(ctx)
+        if repo.get(resource_id) is None:
+            raise HTTPException(status_code=404, detail="资源配置不存在")
+        resource = None
+        if req.status is not None:
+            if req.status not in (RESOURCE_ACTIVE, RESOURCE_DISABLED):
+                raise HTTPException(status_code=400, detail="非法的资源状态")
+            resource = repo.set_status(resource_id, req.status)
+        if req.config is not None:
+            resource = repo.update_config(resource_id, req.config)
+        if resource is None:
+            resource = repo.get(resource_id)
+        return {"resource": resource}
 
     @router.delete("/resources/{resource_id}")
-    async def delete_resource(resource_id: str):
-        """删除资源"""
+    async def delete_resource(
+        resource_id: str,
+        ctx: Any = Depends(get_optional_context),
+    ):
+        """删除配置（级联清理连通记录）"""
+        repo = _resource_repo(ctx)
+        repo.delete(resource_id)
         return {"id": resource_id, "status": "deleted"}
+
+    @router.post("/resources/{resource_id}/check")
+    async def check_resource(
+        resource_id: str,
+        ctx: Any = Depends(get_optional_context),
+    ):
+        """连通性探测（V3 §8.3.4）"""
+        repo = _resource_repo(ctx)
+        resource = repo.get(resource_id)
+        if resource is None:
+            raise HTTPException(status_code=404, detail="资源配置不存在")
+        result = DatabaseConnector().check(resource["kind"], resource.get("config") or {})
+        detail = result["detail"]
+        connected = result["connected"]
+        cid = repo.record_check(
+            _resource_tenant(ctx), resource_id, resource["kind"],
+            connected, result["latency_ms"], detail=detail,
+        )
+        out: Dict[str, Any] = {
+            "connected": connected,
+            "latency_ms": result["latency_ms"],
+            "check_id": cid,
+        }
+        if not connected:
+            out["error"] = detail.get("error", "连接失败")
+        return out
+
+    @router.get("/resources/{resource_id}/checks")
+    async def list_resource_checks(
+        resource_id: str,
+        limit: int = Query(20, ge=1, le=500),
+        ctx: Any = Depends(get_optional_context),
+    ):
+        """连通记录"""
+        repo = _resource_repo(ctx)
+        if repo.get(resource_id) is None:
+            raise HTTPException(status_code=404, detail="资源配置不存在")
+        checks = repo.list_checks(resource_id, limit=limit)
+        return {"total": len(checks), "checks": checks}
 
     # ─── Agent 管理 ───
     @router.get("/agents")
