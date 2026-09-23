@@ -12,6 +12,18 @@
   - **JKOS harness 模块（M16/M20）代码零改动**；`tests/test_harness_integration.py` 断言的是事件类型与 `finish_reason`，与 SDK 版本无关；
   - **部署侧复验（主机 192.168.0.82）**：重装 `deepseek-harness-sdk`（`pip install --no-deps deepseek-harness-sdk`）、重建源码构建的 launcher、重跑 `scripts/m20_accept82.sh` 与 `tests/test_harness_integration.py`（`JKOS_HARNESS_INTEGRATION=1`）。
 
+### 新增（资源配置与数据库连通引导接线，V3 §8.3.4，事项④）
+- **资源配置注册表**（`ResourceRepo`，`jkos_core/db/repos.py`）：按 `RESOURCE_KIND_*`（sqlite / postgres / mysql / redis / mongodb / http）分类的资源配置 CRUD，状态机常量 `RESOURCE_ACTIVE` / `RESOURCE_DISABLED` 与全集 `RESOURCE_STATUSES`
+- **数据库连通性检查**（`jkos_core/db/connectivity.py`，新增）：`DatabaseConnector` 对受支持 kind 做配置校验（`validate()`）与实际连通探测（`check()`，默认超时 `DEFAULT_TIMEOUT=3.0`，返回 `{connected, latency_ms, detail}`）；`redact_config()` 统一脱敏配置输出，探测失败抛 `ConnectorError`
+- **版本化迁移**（`jkos_core/db/schema.py`）：`MIGRATIONS = [MIGRATION_V1, MIGRATION_V2, MIGRATION_V3]`，V3 新增 `resource` 与 `connection_check` 表
+- **REST 端点**（`jkos_core/api/routes.py`，新增 8 个）：`POST/GET /resources`、`GET /resources/stats`、`GET/PUT/DELETE /resources/{resource_id}`、`POST /resources/{resource_id}/check`、`GET /resources/{resource_id}/checks`
+- **⛔ 破坏性变更**：移除旧的 `POST /resources/upload` 占位桩，`/resources` 语义由「上传」转为「资源配置管理」
+- **接线与清理**：`bootstrap.py` 注册接入、`db/__init__.py` 导出；修复 `api/routes.py` 重复 import 与 `repos.py` 重复 `ResourceRepo` 类定义
+
+### 测试（事项④）
+- 新增 `tests/test_resources.py`（**27 用例**）：`DatabaseConnector` 校验与探测、`redact_config` 脱敏、`ResourceRepo` CRUD 与状态流转、8 个端点行为
+- 资源相关测试 **27 passed / 1 warning**（warning 为既有 `httpx` / `starlette` 弃用提示，与本次无关）
+
 ## [M20] 自举第二期（D3 自举闭环）- 2026-09-21（**验收闭环**）
 
 ### 新增（20.1 D3 自举闭环）
