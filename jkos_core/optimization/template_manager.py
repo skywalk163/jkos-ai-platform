@@ -359,12 +359,17 @@ class TemplateManager:
             task_kw = keyword_score(task, t.task)
             score = task_kw + 0.5 * keyword_score(task, t.description)
             scored.append((score, task_kw, t))
-        scored.sort(key=lambda x: x[0], reverse=True)
+        # 分数降序；同分时按 created_at 降序（最新优先），避免稳定排序退回"_all_sync"的旧→新顺序
+        scored.sort(key=lambda x: (x[0], x[2].created_at), reverse=True)
         if scored[0][0] <= 0:
-            # 语义未命中时，按任务与描述的关键字重合度、使用次数兜底排序
+            # 语义未命中时，按任务与描述的关键字重合度、使用次数兜底排序；仍以 created_at 打破平局
             toks = tokenize(task)
             scored.sort(
-                key=lambda x: (len(toks & tokenize(x[2].task + x[2].description)), x[2].use_count),
+                key=lambda x: (
+                    len(toks & tokenize(x[2].task + x[2].description)),
+                    x[2].use_count,
+                    x[2].created_at,
+                ),
                 reverse=True,
             )
         _, best_task_kw, best = scored[0]
