@@ -1,0 +1,31 @@
+# 示例：profile 用户层覆盖（可选，留空也能跑）
+#
+# 位置：$DSH_HOME/profiles/<profile>/cordis.patch.yml
+#      或机器级 $DSH_HOME/cordis.patch.yml（优先级更高）
+# 层叠顺序（后者覆盖前者）：
+#   bundles（按 dsh.profile.bundles 的列表顺序）→ profile 本层 → $DSH_HOME/cordis.patch.yml → --patch
+#
+# 插件装好后用 bundle 里的默认值即可工作（控制台与 MCP 都在本机 3000），
+# 下面两条按需启用。
+
+# (1) 控制台不在本机、或不在 3000 时，用覆盖语义改插件行。
+#     条目带 id 即「覆盖既有行」；目标不存在会报 entry "jkos" not found。
+# - id: jkos
+#   name: 'jkos-plugin'
+#   config:
+#     baseUrl: http://jkos.local:3000
+
+# (2) 工具桥的 MCP 端点不在本机、或不在 3000 时，同样用覆盖语义改 MCP 客户端行。
+# - id: mcp-jkos
+#   name: '@deepseek-ai/dsh-mcp-client'
+#   config:
+#     serverName: jkos
+#     transport: streamable-http
+#     url: http://jkos.local:3000/mcp
+#     headers:
+#       Authorization: !!js '`Bearer ${process.env.JKOS_MCP_TOKEN}`'
+#     failOnStartupError: true
+
+# (3) 用公网 api.deepseek.com 时还需一份 LLM 协议覆盖层，见 ../patches/llm-chat-completions.yml
+
+[]

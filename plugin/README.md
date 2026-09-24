@@ -45,22 +45,49 @@ dsh plugin --profile <你的 profile> add /绝对路径/to/本插件目录
 
 > **先检查冲突**：若该 profile 的用户层 patch（`$DSH_HOME/profiles/<profile>/cordis.patch.yml` 或 `$DSH_HOME/cordis.patch.yml`）里已经有 `mcp-jkos` 行（旧版 JKOS 自动生成过），**必须先删掉** —— 两层各 `insert` 一个同名 id 会冲突。
 
+## 快速开始（示例 profile）
+
+[`examples/`](examples/) 里有一份可直接复制使用的 profile 骨架：
+
+| 文件 | 作用 |
+|---|---|
+| [`examples/profile/package.json`](examples/profile/package.json) | profile 清单：`dsh.profile.bundles` 按顺序层叠 `dsh-base` → `dsh-web-app` → `jkos-plugin` |
+| [`examples/profile/cordis.patch.yml`](examples/profile/cordis.patch.yml) | 用户层覆盖模板：留空即可跑，注释里给了「改上游地址」的覆盖写法 |
+
+两种用法：
+
+1. **推荐**：直接用 CLI 装，profile 不存在时会自动初始化，依赖与 bundles 都写对
+   ```sh
+   dsh plugin --profile jkos add /绝对路径/to/本插件目录
+   ```
+2. **手工**：把 `examples/profile/` 复制成 `$DSH_HOME/profiles/jkos/`，再把 `package.json` 里 `link:` 的占位路径改成插件的实际路径。
+
+启动时给 harness 进程带上工具桥令牌：
+
+```sh
+export JKOS_MCP_TOKEN=<JKOS 签发的 token>
+dsh --profile jkos          # 较新版本的 CLI 也接受简写：dsh jkos
+```
+
 ## 配置
 
-`cordis.patch.yml` 里只有一处可改：
+两个上游互相独立，可以在不同机器、不同端口，都在 `cordis.patch.yml` 里：
 
 | 项 | 默认 | 说明 |
 |---|---|---|
-| `config.baseUrl` | `http://127.0.0.1:3000` | JKOS 服务根地址，`/jkos/*` 反代到它的对应路径。控制台页面必须在该地址的 `/` 上。 |
+| 插件行 `config.baseUrl` | `http://127.0.0.1:3000` | 面板要显示的控制台所在服务；`/jkos/*` 反代到它的对应路径 |
+| MCP 行 `config.url` | `http://127.0.0.1:3000/mcp` | 工具桥消费的 JKOS MCP 端点 |
+
+默认值指向 JKOS 的 MCP 服务（默认端口 3000，当前同时承担控制台根路由）。换地址的写法见 [`examples/profile/cordis.patch.yml`](examples/profile/cordis.patch.yml)。
 
 密钥一律经环境变量，不落任何文件：
 
 | 环境变量 | 用途 |
 |---|---|
 | `JKOS_MCP_TOKEN` | 工具桥的 Bearer token（harness 侧经 `!!js` 从进程环境读取） |
-| `JKOS_BASE_URL` | 覆盖 `config.baseUrl`（可选） |
+| `JKOS_BASE_URL` | 覆盖插件行的 `config.baseUrl`（可选） |
 
-面板 iframe 的路径是 `/jkos/`，与 Host 半包的 `ROUTE_PREFIX` 常量对应；侧栏显示名在 `client.js` 的 `PANEL_LABEL`。
+反代挂载路径 `/jkos/` 由 Host 半包的 `ROUTE_PREFIX` 与 `client.js` 的 `FRAME_SRC` 两个常量共同决定，改路径要同时改；侧栏显示名在 `client.js` 的 `PANEL_LABEL`。
 
 ## 验证
 
@@ -82,8 +109,8 @@ dsh --profile <profile> --dump-config      # 应看到 # == jkos-plugin 层，�
 
 ## 已知限制
 
-- 反代只支持 `http`（JKOS 与 harness 同机 loopback），不支持 WebSocket 升级。
-- `baseUrl` 默认按 0.82 部署实测：JKOS 控制台页面由 **3000** 端口的服务提供，8000 只是 API。你的部署不同就改 `baseUrl`。
+- 反代只支持 `http` 上游，也不转发 WebSocket 升级。JKOS 与 harness 不同机、或中间要 TLS 时，需要自行补传输层。
+- 面板内容取自插件行 `config.baseUrl` 的 `/`。JKOS 的控制台根路由当前挂在 MCP 服务（默认 3000）上，API 服务（默认 8000）只提供 `/api/v1/*` —— 把面板指向 8000 会 404。
 - 公网 `api.deepseek.com` 需要 `patches/llm-chat-completions.yml` 那份覆盖层（harness 的 `deepseek-official` 默认走 messages 协议，指向公网端点会 100% 404）。这属于部署环境问题而非插件职责，所以没有默认挂载 —— 把它的内容放进你的 profile 用户层即可。
 
 ## 验证状态（2026-09-24）

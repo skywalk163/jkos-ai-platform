@@ -1,16 +1,16 @@
 /**
  * 极快AI操作系统（JKOS）harness 插件 —— Host 半包。
  *
- * 只做一件事：把 harness Web 服务器的 `/jkos` 前缀路由反代给 JKOS 后端，
+ * 只做一件事：把 harness Web 服务器的 `/jkos` 前缀路由反代到 JKOS 服务，
  * 于是浏览器同源地拿到 JKOS 的页面与接口，Client 半包的 iframe 直接指向
- * `/jkos/`，harness 的浏览器会话会话 cookie 与 Host/Origin 围栏自然生效。
+ * `/jkos/`，harness 的浏览器会话 cookie 与 Host/Origin 围栏自然生效。
  *
  * 鉴权不在本插件里另行发明：每个请求先问组合的 `connection` 服务要一个
  * `requestRejection` —— 它的 Host/Origin 围栏挡住 DNS rebinding 与跨站调用，
  * 浏览器登录令牌 cookie 在进入反代之前就完成放行/拒绝。
  *
- * HTTPS、WebSocket 升级、TLS 均不在支持范围：JKOS 与 harness 同机，走 loopback
- * 明文 HTTP。
+ * 上游地址来自 config.baseUrl（可用环境变量 JKOS_BASE_URL 覆盖），默认指向本机
+ * JKOS 服务。只支持 http 上游，且不支持 WebSocket 升级。
  */
 import http from 'node:http'
 import { URL } from 'node:url'
@@ -24,7 +24,7 @@ export const inject = ['webServer', 'connection']
 /** 反代挂载前缀；必须与 client.js 的 iframe src 保持一致。 */
 const ROUTE_PREFIX = '/jkos'
 
-/** JKOS 服务默认根地址（须在其 `/` 上提供控制台页面）。 */
+/** JKOS 服务默认根地址：JKOS 的 MCP 服务默认监听 3000，控制台页面须在该服务 `/` 上。 */
 const DEFAULT_BASE_URL = 'http://127.0.0.1:3000'
 
 /**
