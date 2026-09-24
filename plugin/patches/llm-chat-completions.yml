@@ -1,0 +1,17 @@
+# 可选覆盖层模板 —— 部署环境相关，不属于 JKOS 插件本身。
+#
+# 公网 api.deepseek.com 只支持 Chat Completions，而 harness 的 deepseek-official
+# 默认走 messages 协议 → 指向公网端点会 100% HTTP_404。若你的部署用公网
+# DeepSeek，把本文件内容放进用户层即可：
+#
+#   $DSH_HOME/profiles/<profile>/cordis.patch.yml   （profile 级）
+#   $DSH_HOME/cordis.patch.yml                      （机器级，优先级更高）
+#
+# 走覆盖语义：行必须带 id（bundle 已挂载 llm-deepseek），目标不存在会报
+# `entry "llm-deepseek" not found`。
+
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+    protocol: chat-completions

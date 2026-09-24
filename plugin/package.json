@@ -1,0 +1,15 @@
+{
+  "name": "jkos-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "极快AI操作系统（JKOS）作为 deepseek-harness 插件的 bundle：/jkos 反代路由 + 侧栏面板 + MCP 工具桥",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web" }
+  }
+}

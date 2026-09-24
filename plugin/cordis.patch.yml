@@ -1,0 +1,32 @@
+# 极快AI操作系统（JKOS）插件 —— 组合层（bundle layer）
+#
+# 语义提醒（deepseek-harness cordis patch）：
+#   - 带 id 的顶层条目是「覆盖」语义，按 id 合并到**既有**条目；目标不存在会报
+#     `entry "<id>" not found`。
+#   - **新增**条目必须包在 insert: 列表里（外层不带 id）。
+#
+# 密钥铁律：本文件不含任何密钥，凭据一律经环境变量在 harness 侧读取。
+
+- insert:
+    # 1) 插件本体：Host 半包 /jkos 反代路由 + Client 半包（侧栏入口 + 主区面板）
+    - id: jkos
+      name: 'jkos-plugin'
+      config:
+        # JKOS 服务根地址：/jkos/* 反代到它的对应路径，控制台页面须在它的 / 上。
+        # 0.82 部署上是 MCP 服务（3000）承担控制台根路由；API 服务是 8000。
+        # 须为 http；也可用环境变量 JKOS_BASE_URL 覆盖。
+        baseUrl: http://127.0.0.1:3000
+
+    # 2) 工具桥：让 agent 直接调用 JKOS 已注册的工具（工具名 mcp__jkos__<tool>）
+    #    消费方是 harness 内置的通用 MCP 客户端，JKOS 侧只需提供标准 /mcp 端点。
+    - id: mcp-jkos
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: jkos
+        transport: streamable-http
+        url: http://127.0.0.1:3000/mcp
+        headers:
+          # Bearer token 从 harness 进程环境读取，不落盘。
+          # 建议同时开启 JKOS 侧严格鉴权（JKOS_MCP_REQUIRE_AUTH=true，匿名 401）。
+          Authorization: !!js '`Bearer ${process.env.JKOS_MCP_TOKEN}`'
+        failOnStartupError: true
