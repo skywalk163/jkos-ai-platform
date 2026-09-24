@@ -45,24 +45,34 @@ dsh plugin --profile <你的 profile> add /绝对路径/to/本插件目录
 
 > **先检查冲突**：若该 profile 的用户层 patch（`$DSH_HOME/profiles/<profile>/cordis.patch.yml` 或 `$DSH_HOME/cordis.patch.yml`）里已经有 `mcp-jkos` 行（旧版 JKOS 自动生成过），**必须先删掉** —— 两层各 `insert` 一个同名 id 会冲突。
 
-## 快速开始（示例 profile）
+## 快速开始（安装脚本）
 
-[`examples/`](examples/) 里有一份可直接复制使用的 profile 骨架：
+在插件目录里跑一条命令，默认装进 profile `jkos`：
+
+```sh
+sh install.sh              # 或 sh install.sh <profile 名>
+```
+
+脚本按顺序尝试：① PATH 里的 `dsh` → ② `DSH_BIN` 指定的可执行文件 → ③ 都没有就照 `examples/profile/` 手工搭建 profile，并**把模板里的 `link:` 占位路径自动替换成插件的实际路径**。
+
+走 ①/② 建**新** profile 时，脚本会先用 `web` 模板初始化它 —— CLI 自带的默认模板只有 `dsh-base`，没有 Web 界面 bundle，面板就无处渲染；装完再用 `--dump-config` 复核一次，缺 `dsh-web-app` 会明确告警而不是让你自己去猜。已有的 profile 不会被改动，只是被检查。
+
+| 环境变量 | 用途 |
+|---|---|
+| `DSH_BIN` | dsh 可执行文件路径；PATH 里没有 `dsh` 时用它（例如源码启动器 `<harness>/dsh-jkos.sh`） |
+| `DSH_HOME` | harness 的 home 目录；只在退化成 ③ 手工搭建时才需要 |
+| `JKOS_MCP_TOKEN` | 启动 harness 前 export，工具桥的 Bearer token |
+
+脚本跑完会打印剩下的注意事项：令牌、启动命令、`mcp-jkos` 冲突检查、以及怎么改上游地址。
+
+不想用脚本也可以手工装，模板在 [`examples/profile/`](examples/profile/)：
 
 | 文件 | 作用 |
 |---|---|
-| [`examples/profile/package.json`](examples/profile/package.json) | profile 清单：`dsh.profile.bundles` 按顺序层叠 `dsh-base` → `dsh-web-app` → `jkos-plugin` |
+| [`examples/profile/package.json`](examples/profile/package.json) | profile 清单：`dsh.profile.bundles` 按顺序层叠 `dsh-base` → `dsh-web-app` → `jkos-plugin`；`dependencies` 里的 `link:` 是占位路径，要改成插件实际路径（脚本会自动填） |
 | [`examples/profile/cordis.patch.yml`](examples/profile/cordis.patch.yml) | 用户层覆盖模板：留空即可跑，注释里给了「改上游地址」的覆盖写法 |
 
-两种用法：
-
-1. **推荐**：直接用 CLI 装，profile 不存在时会自动初始化，依赖与 bundles 都写对
-   ```sh
-   dsh plugin --profile jkos add /绝对路径/to/本插件目录
-   ```
-2. **手工**：把 `examples/profile/` 复制成 `$DSH_HOME/profiles/jkos/`，再把 `package.json` 里 `link:` 的占位路径改成插件的实际路径。
-
-启动时给 harness 进程带上工具桥令牌：
+启动：
 
 ```sh
 export JKOS_MCP_TOKEN=<JKOS 签发的 token>
