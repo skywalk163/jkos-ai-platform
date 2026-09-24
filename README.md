@@ -8,6 +8,9 @@
 
 > **品牌说明**：本项目原名「DSH AI 中台」，现更名为**极快AI操作系统**（英文 **Jikuai AI OS**，简称 **JKOS**）。设计路线为结合开源项目 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)（FreeBSD 版）作为 Agent 执行层，在 FreeBSD 系统下构建一整套 AI 服务操作系统；harness 智能中枢已于 M16 落地（默认关闭，`JKOS_HARNESS_ENABLED` 控制），M20 起 JKOS 自举闭环经 MCP 工具桥接暴露给 harness agent，当前阶段同时自研实现多租户企业服务层（REST / 多租户 MCP 网关 / RBAC / 审计 / 多 LLM 路由）。
 
+> **两条产品线**：`main` 是上面这套定制部署在 FreeBSD 的企业级实现（JKOS 托管 harness）；分支 **`jkos-dsh-plugin`** 是它的开源对偶 —— 把 JKOS 做成 deepseek-harness 的**插件** bundle，装上即可在 harness Web 界面里得到 JKOS 面板，并让 agent 调用 JKOS 工具。两线从同一份 `jkos_core/` 中台能力出发并行维护，接入层各写各的。
+> 用法见 [`plugin/README.md`](plugin/README.md) · 参与开发见 [`plugin/CONTRIBUTING.md`](plugin/CONTRIBUTING.md) · 变更记录见 [`plugin/CHANGELOG.md`](plugin/CHANGELOG.md) · 决策记录见 [`docs/adr/0002-jkos-as-harness-plugin.md`](docs/adr/0002-jkos-as-harness-plugin.md)
+
 ## 🚀 快速开始
 
 ```bash
@@ -118,6 +121,14 @@ jkos-server mcp --port 3000
 
 ```
 dsh-ai-platform/
+├── plugin/                     # deepseek-harness 插件 bundle（分支 jkos-dsh-plugin），见 plugin/README.md
+│   ├── package.json            # bundle 清单（dsh.bundle.patch + dsh.client）
+│   ├── cordis.patch.yml        # 组合层：insert 插件本体行 + MCP 客户端行
+│   ├── index.js                # Host 半包：/jkos 前缀反代路由
+│   ├── client.js               # Client 半包：侧栏入口 + 主区面板（零构建手写 JS）
+│   ├── install.sh              # 一键安装脚本（三级降级 + 自动填路径）
+│   ├── examples/profile/       # 可复制的 profile 骨架
+│   └── README / CONTRIBUTING / CHANGELOG
 ├── pyproject.toml              # 项目配置
 ├── jkos_core/                  # 核心代码
 │   ├── __init__.py             # 包初始化

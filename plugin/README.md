@@ -31,6 +31,32 @@
    - 它的 `/mcp` 提供标准 MCP 端点（工具桥的上游）。
 3. 建议 JKOS 侧开启严格鉴权：`JKOS_MCP_REQUIRE_AUTH=true`（匿名请求 401，工具列表也不泄露租户自定义工具）。
 
+## 自检（装之前先确认上游）
+
+三条命令确认 JKOS 服务真的提供了插件要的两件东西：
+
+```sh
+# 1) 控制台页面在 baseUrl 的 / 上（面板内容源）—— 期望 200 + text/html
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://127.0.0.1:3000/
+
+# 2) MCP 端点在，且严格鉴权下匿名被拒 —— 期望 401
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:3000/mcp \
+  -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":0,"method":"tools/list","params":{}}'
+
+# 3) 带令牌时工具列表可读 —— 期望 200 且 result.tools 非空
+curl -s -X POST http://127.0.0.1:3000/mcp \
+  -H 'Content-Type: application/json' -H "Authorization: Bearer $JKOS_MCP_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | head -c 200
+```
+
+第 2 条返回 200 说明 JKOS 侧没开严格鉴权，插件仍能用，但匿名可见性会退化。第 3 条要的令牌由 JKOS 签发（`jkos_core.auth` 的 JWTManager，带 tenant/user/roles），例如：
+
+```sh
+python -c "import sys; sys.path.insert(0,'<jkos 代码目录>'); from jkos_core.auth import AuthConfig, JWTManager; print(JWTManager(AuthConfig.from_env()).issue_token(tenant_id='dev', tenant_code='dev', user_id='admin', roles=['admin'], expires_in=3600))"
+```
+
+**铸令牌的进程与 JKOS 服务必须共享 `DSH_JWT_SECRET`**，否则签出来的 token 立刻被判无效（JKOS 未配置该变量时每个进程各生成一把临时密钥）。
+
 ## 安装
 
 ```sh
@@ -110,6 +136,21 @@ dsh --profile <profile> --dump-config      # 应看到 # == jkos-plugin 层，�
 - 侧栏出现入口，点开显示 JKOS 控制台 → Host 与 Client 半包都在工作；
 - 匿名请求 `/jkos/` 应 401、带 harness 登录令牌应 200 → 反代复用了 harness 的 connection 信任围栏（Host/Origin 校验 + 浏览器会话鉴权），没有另造一套鉴权；
 - 让 agent 调用 `mcp__jkos__<工具名>` 并拿到真实返回 → 工具桥工作。
+
+## 排错
+
+| 症状 | 可能原因 | 处理 |
+|---|---|---|
+| `--dump-config` 里看不到 `# == jkos-plugin` 层 | bundle 没进 profile | `dsh plugin --profile <p> add <插件目录>`；再查 `dsh.profile.bundles` 是否含 `jkos-plugin` |
+| harness 启动直接失败，日志涉及 mcp / dsh-mcp-client | MCP 端点不可达或令牌无效 —— `failOnStartupError: true` 会让整行失败 | 先跑上面「自检」三条；定位阶段可临时把它改 `false` |
+| 侧栏没有 JKOS 入口、面板无处显示 | profile 的 bundles 里没有 `dsh-web-app`（CLI 自带默认模板就没有） | `dsh --profile <p> --from-default-profile web --dump-config` 初始化后重装，或把 `dsh-web-app` 加进 bundles |
+| 面板打开是 404 | `baseUrl` 指向了没有控制台根路由的服务（例如 JKOS 的 API 服务 8000） | 把插件行的 `baseUrl` 改到控制台服务 |
+| 面板打开是 502 | 反代连不上上游 | 确认 JKOS 服务在跑、`baseUrl` 可达；harness 日志会打印「上游不可达」与原因 |
+| 匿名 curl `/jkos/` 返回 200 而不是 401 | 请求带了浏览器登录 cookie，`requestRejection` 已放行 | 属正常；用不带 cookie 的 curl 复核 |
+| agent 看不到 `mcp__jkos__*` 工具 | 工具桥没连上，或令牌与 JKOS 侧密钥不匹配 | 跑「自检」第 3 条；确认铸令牌的进程与 JKOS 服务共享 `DSH_JWT_SECRET` |
+| `dsh: error: --profile <name> is required` | 用了 `dsh <profile>` 简写，但该版本 CLI 没有这个简写（见「安装」一节） | 改用 `dsh --profile <name>` |
+| 启动报同一 id 被插了两次 | profile 用户层已有一份自动生成的 `mcp-jkos` 行 | 删掉用户层那份（保留插件的 bundle 层） |
+| 面板里的静态资源 404 | 页面用了根绝对路径引用 | 反代会把 HTML 里的 `href/src/action="/x"` 改写到 `/jkos/x`；若仍 404，请附页面来源提 issue |
 
 ## 与 FreeBSD 企业版的关系
 
