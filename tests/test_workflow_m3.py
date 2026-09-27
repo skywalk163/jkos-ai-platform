@@ -233,7 +233,7 @@ def test_sweep_timeouts_without_repo_returns_empty():
     db, engine = make_engine_no_approvals()
     try:
         handled = run(engine.sweep_timeouts())
-        assert handled == {"auto_passed": [], "auto_rejected": [], "escalated": []}
+        assert handled == {"auto_passed": [], "auto_rejected": [], "escalated": [], "agent_timed_out": []}
     finally:
         db.close()
 
@@ -246,7 +246,7 @@ def test_sweep_timeouts_terminal_instance_cancels_task():
         inst_id, task = _due_approval_task(engine, "m3_approval_stale")
         engine.repo.update_status(inst_id, INSTANCE_CANCELLED, error={"reason": "外部取消"})
         handled = run(engine.sweep_timeouts())
-        assert handled == {"auto_passed": [], "auto_rejected": [], "escalated": []}
+        assert handled == {"auto_passed": [], "auto_rejected": [], "escalated": [], "agent_timed_out": []}
         assert engine.approvals.get_task(task["id"])["status"] == "CANCELLED"
     finally:
         db.close()

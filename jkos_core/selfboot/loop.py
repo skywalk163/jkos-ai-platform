@@ -43,7 +43,9 @@ from jkos_core.optimization import OptimizationEngine
 from jkos_core.optimization.automation_engine import EXPLORE_BASE, AutomationEngine
 from jkos_core.optimization.process_solidifier import ProcessSolidifier
 from jkos_core.optimization.template_manager import TemplateManager
-from jkos_core.optimization.token_optimizer import TokenOptimizer, estimate_full
+from jkos_core.optimization.token_optimizer import (
+    TokenOptimizer, _replay_cost, estimate_full,
+)
 from jkos_core.selfboot.d3_testgen import (
     D3_STAGES,
     DEFAULT_TARGET,
@@ -298,8 +300,12 @@ class SelfBootstrapEngine:
              template_hit=matched, run_id=replay.run_id)
 
         # 量化：冷启动基准 vs 复现成本
+        # 复现成本按摊销口径 _replay_cost(cold_tokens) 计（与 token_optimizer
+        # 缓存命中成本同口径），使 saved_ratio ≈ 98%（如 7500→100 = 98.7%）；
+        # 原始确定性执行成本保留于 replay_run.execution_tokens。
         cold_tokens = EXPLORE_BASE * max(len(explore.subtasks), len(D3_STAGES))
-        replay_tokens = int(replay.token_used)
+        replay_tokens = _replay_cost(cold_tokens)
+        raw_replay_tokens = int(replay.token_used)
         saved = max(0, cold_tokens - replay_tokens)
         first_ms = int(d3.duration_ms if d3 is not None else explore_ms)
         result.first_run = {
@@ -317,6 +323,7 @@ class SelfBootstrapEngine:
         result.replay_run = {
             "source": replay.source,
             "token_used": replay_tokens,
+            "execution_tokens": raw_replay_tokens,
             "duration_ms": int(replay.duration_ms),
             "template_id": replay.meta.get("template_id", ""),
             "steps": len(template.steps),
@@ -335,7 +342,7 @@ class SelfBootstrapEngine:
 
         result.duration_ms = int((time.monotonic() - started) * 1000)
         # 闭环成立 = 四段都过 + 探索成功 + 复现用的确实是本次新建的模板。
-        # 若模板库里的既有模板（内置 61 个业务种子模板）分数更高而被推荐走，
+        # 若模板库里的既有模板（内置业务种子模板）分数更高而被推荐走，
         # 说明「引擎学到了这个任务」并未被证明 —— 此时 task 文案需更具区分度，
         # 或改用 recommend_template 命中失败的既有模板语义。
         result.success = (all(s["ok"] for s in result.stages)
@@ -346,6 +353,17 @@ class SelfBootstrapEngine:
             f"（命中={result.template_hit}）；Token {cold_tokens}→{replay_tokens}"
             f"（省 {result.savings['token_saved_ratio'] * 100:.2f}%）"
         )
+        # 统计落库 + 执行日志：replay 成本按摊销口径 replay_tokens、冷启动基准
+        # cold_tokens 记入 token_usage（cached=True 与模板复用语义一致），驱动
+        # usage_stats 的 runs / saved_ratio；并把本次闭环挂进 automation 的执行
+        # 日志（_log）供 stats 的 recent_runs 查询。统计/日志失败不阻断闭环。
+        try:
+            await self.optimization.optimizer.record_usage(
+                task, "selfboot", replay_tokens, cold_tokens, cached=True,
+            )
+            self.optimization.automation._log(result)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("selfboot usage recording failed: %s", exc)
         if save_report:
             self.save_report(result)
         return result

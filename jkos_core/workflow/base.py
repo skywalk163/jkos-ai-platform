@@ -70,14 +70,25 @@ class NodeSpec:
         （定义期校验，杜绝写冲突）；
       - read_keys 声明节点依赖的分区（文档化 + 校验辅助）；
       - 未声明 write_keys 的节点沿用管道式 prev_output 传递。
+
+    执行器派发（M21 任务 21.1，executor SPI）：
+      - executor 声明节点由外部执行器（如 dsh 开发助手）异步执行：
+        引擎 dispatch 后实例进入 WAITING_AGENT 挂起等结果事件续跑；
+      - task 携带派发给执行器的任务载荷（任意 dict，执行器可写回结果）；
+      - sla_hours 挂起超时（超时扫描时人工兜底提醒/动作）；
+      - 未声明 executor 的节点保持 M0/M1 本机执行语义（向后兼容）。
     """
     node_code: str                    # 节点标识（步骤轨迹展示用）
     handler: str                      # 节点处理器名（引擎节点注册表 key）
-    node_type: str = "tool"           # tool / llm / approval / ...
+    node_type: str = "tool"           # tool / llm / approval / agent / ...
     read_keys: List[str] = field(default_factory=list)
     write_keys: List[str] = field(default_factory=list)
     parallel_group: Optional[str] = None
     approval: Optional[ApprovalSpec] = None
+    # M21 executor SPI（可选）：派发外部执行器异步执行
+    executor: Optional[str] = None
+    task: Optional[Dict[str, Any]] = None
+    sla_hours: Optional[float] = None
 
 
 @dataclass

@@ -10,6 +10,7 @@ import asyncio
 import json
 import sqlite3
 import time
+import weakref
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -22,6 +23,16 @@ from jkos_core.optimization.base import (
     now_iso,
 )
 from jkos_core.optimization.templates.seed_data import SEED_TEMPLATES
+
+
+def _close_conn_safe(conn: Optional[sqlite3.Connection]) -> None:
+    """GC 兜底：宿主对象被回收时若连接未显式关闭，则在此关闭（防 ResourceWarning 泄漏）。"""
+    try:
+        if conn is not None:
+            conn.close()
+    except Exception:
+        pass
+
 
 DEFAULT_DB_PATH = (
     Path(__file__).resolve().parents[1] / "optimization" / "template_db" / "templates.db"
@@ -93,6 +104,8 @@ class TemplateManager:
         if self._conn is None:
             self._conn = sqlite3.connect(self.db_path, timeout=30, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
+            weakref.finalize(self, _close_conn_safe, self._conn)
+            weakref.finalize(self, _close_conn_safe, self._conn)
 
     async def initialize(self) -> None:
         """幂等建表；模板库为空时装载内置种子模板。由自动化引擎/门面异步 await。"""

@@ -11,10 +11,21 @@ import asyncio
 import json
 import sqlite3
 import time
+import weakref
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from jkos_core.optimization.base import OptimizedTask, TokenUsage, now_iso
+
+
+def _close_conn_safe(conn: Optional[sqlite3.Connection]) -> None:
+    """GC 兜底：宿主对象被回收时若连接未显式关闭，则在此关闭（防 ResourceWarning 泄漏）。"""
+    try:
+        if conn is not None:
+            conn.close()
+    except Exception:
+        pass
+
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "optimization" / "token_cache" / "token_cache.db"
 DEFAULT_REPORT_DIR = Path(__file__).resolve().parents[2] / "reports" / "token_usage"
@@ -99,6 +110,8 @@ class TokenOptimizer:
         if self._conn is None:
             self._conn = sqlite3.connect(self.db_path, timeout=30, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
+            weakref.finalize(self, _close_conn_safe, self._conn)
+            weakref.finalize(self, _close_conn_safe, self._conn)
 
     async def initialize(self) -> None:
         """幂等建表，进程重启后自动恢复。由自动化引擎/门面异步 await。"""

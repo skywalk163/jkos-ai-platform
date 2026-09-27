@@ -70,12 +70,23 @@ async def node_noop(ctx: NodeContext):
     return {"node": ctx.step["node_code"], "via": "manual"}
 
 
+async def node_agent(ctx: NodeContext):
+    """执行器节点占位处理器（M21 任务 21.1，executor SPI）。
+
+    声明了 executor 的节点由引擎外部派发、异步执行（实例挂起 WAITING_AGENT），
+    本处理器不参与正常派发路径，仅作为本机兜底/单测直调占位。
+    """
+    task = (ctx.instance.get("context") or {}).get("agent_task") or {}
+    return {"node": ctx.step["node_code"], "via": "agent", "task": task}
+
+
 BUILTIN_NODES: Dict[str, NodeHandler] = {
     "echo": node_echo,
     "llm_chat": node_llm_chat,
     "fail": node_fail,
     "crash": node_crash,
     "noop": node_noop,
+    "agent": node_agent,
 }
 
 
@@ -123,6 +134,17 @@ WORKFLOW_REGISTRY: Dict[str, WorkflowDef] = {
         nodes=[
             NodeSpec("prepare", "echo"),
             NodeSpec("manual_review", "noop", node_type="approval"),
+            NodeSpec("finish", "echo"),
+        ],
+    ),
+    "hello_agent": WorkflowDef(
+        code="hello_agent",
+        description="执行器流转（M21 任务 21.1）: 回显 → agent 外部派发（WAITING_AGENT）→ 回显",
+        nodes=[
+            NodeSpec("prepare", "echo"),
+            NodeSpec("delegate", "agent", node_type="agent",
+                     executor="mock", task={"goal": "hello"}, sla_hours=1.0,
+                     write_keys=["agent_result"]),
             NodeSpec("finish", "echo"),
         ],
     ),

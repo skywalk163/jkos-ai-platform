@@ -13,6 +13,7 @@ jkos_core/exploration/knowledge_base/knowledge.db。
 from __future__ import annotations
 
 import asyncio
+from contextlib import closing
 import json
 import logging
 import re
@@ -84,7 +85,7 @@ class KnowledgeBase:
     def _create_schema(self) -> None:
         path = Path(self.db_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS knowledge (
@@ -155,7 +156,7 @@ class KnowledgeBase:
             await asyncio.to_thread(self._insert_sync, knowledge)
 
     def _insert_sync(self, knowledge: Knowledge) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute(
                 "INSERT OR REPLACE INTO knowledge"
                 " (knowledge_id, task, content, category, outcome, created_at, meta)"
@@ -181,7 +182,7 @@ class KnowledgeBase:
     def _search_sync(self, task: str, limit: int,
                      category: Optional[str]) -> List[Knowledge]:
         # 单文件规模全量打分，排序精确且足够快
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             if category:
                 cursor = conn.execute(
                     "SELECT * FROM knowledge WHERE category = ?", (category,))
@@ -210,7 +211,7 @@ class KnowledgeBase:
         return await asyncio.to_thread(self._count_sync)
 
     def _count_sync(self) -> int:
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             row = conn.execute("SELECT COUNT(*) FROM knowledge").fetchone()
             return int(row[0])
 
@@ -219,7 +220,7 @@ class KnowledgeBase:
         await self.initialize()
 
         def _fetch():
-            with sqlite3.connect(self.db_path) as conn:
+            with closing(sqlite3.connect(self.db_path)) as conn, conn:
                 cursor = conn.execute(
                     "SELECT * FROM knowledge ORDER BY created_at DESC LIMIT ?",
                     (limit,))

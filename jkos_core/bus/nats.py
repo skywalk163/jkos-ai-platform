@@ -133,7 +133,11 @@ class NatsEventBus(EventBus):
         """
         try:
             import nats  # type: ignore
-            self._nc = await nats.connect(self.nats_url, connect_timeout=3)
+            # nats-py 在服务器不可达时会无限重试（约 60 次 x 2s），
+            # connect_timeout=3 仅约束单次 TCP 握手；用 wait_for 加整体超时，
+            # 保证 connect() 在 NATS 不可用时快速返回并降级为内嵌内存模式。
+            self._nc = await asyncio.wait_for(
+                nats.connect(self.nats_url, connect_timeout=3), timeout=5)
             self._connected = True
             logger.info("已连接 NATS: %s", self.nats_url)
         except Exception as e:
@@ -392,6 +396,12 @@ class EventTypes:
     WORKFLOW_STARTED = "WORKFLOW.STARTED"
     WORKFLOW_COMPLETED = "WORKFLOW.COMPLETED"
     WORKFLOW_FAILED = "WORKFLOW.FAILED"
+
+    # 执行器事件（M21 任务 21.1，executor SPI）
+    EXEC_DISPATCHED = "EXEC.DISPATCHED"
+    EXEC_RESULT = "EXEC.RESULT"
+    EXEC_FAILED = "EXEC.FAILED"
+    EXEC_TIMEOUT = "EXEC.TIMEOUT"
 
 
 # ─── 事件构建器 ───

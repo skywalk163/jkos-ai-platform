@@ -11,6 +11,7 @@ import os
 import sqlite3
 import threading
 import time
+import weakref
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -19,6 +20,15 @@ from typing import Any, Dict, Iterator, List, Optional
 from jkos_core.db.schema import MIGRATIONS
 
 logger = logging.getLogger("dsh.db")
+
+
+def _close_conn_safe(conn: Optional[sqlite3.Connection]) -> None:
+    """GC 兜底：宿主对象被回收时若连接未显式关闭，则在此关闭（防 ResourceWarning 泄漏）。"""
+    try:
+        if conn is not None:
+            conn.close()
+    except Exception:
+        pass
 
 
 def utc_now() -> str:
@@ -58,6 +68,7 @@ class Database:
         # 多语句原子性一律走 transaction()（BEGIN IMMEDIATE）或 migrate()
         self._conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
         self._conn.row_factory = sqlite3.Row
+        weakref.finalize(self, _close_conn_safe, self._conn)
         # WAL：并发读不阻塞写；NORMAL 在 WAL 下安全且更快；外键必须显式开启
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA synchronous=NORMAL")

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from jkos_core.bus.nats import (
+    Event,
     EventBus,
     EventBusFactory,
     EventTypes,
@@ -17,6 +18,7 @@ from jkos_core.bus.nats import (
 )
 
 __all__ = [
+    "Event",
     "EventBus",
     "EventBusFactory",
     "EventTypes",

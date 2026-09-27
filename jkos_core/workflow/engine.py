@@ -19,14 +19,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from jkos_core.audit import ACTOR_HUMAN, ACTOR_SYSTEM
+from jkos_core.bus import Event, EventTypes
 from jkos_core.db import (
     INSTANCE_CANCELLED,
     INSTANCE_COMPLETED,
     INSTANCE_RUNNING,
     INSTANCE_TERMINAL,
+    INSTANCE_WAITING_AGENT,
     INSTANCE_WAITING_APPROVAL,
     STEP_SKIPPED,
     STEP_SUCCEEDED,
@@ -34,6 +37,7 @@ from jkos_core.db import (
     ApprovalTaskRepo,
     WorkflowRepo,
 )
+from jkos_core.executors import DispatchResult, ExecutorError
 from jkos_core.workflow.approval import (
     ESCALATION_WINDOW_HOURS,
     next_escalation,
@@ -69,6 +73,11 @@ class WorkflowEngine:
         self.jwt = getattr(comps, "jwt", None)
         self.comps = comps  # 保存组件引用，便于测试访问
         self._nodes: Dict[str, Any] = dict(BUILTIN_NODES)
+        # M21 执行器 SPI（可选注入，保持 M0/M1 兼容）
+        self.bus = getattr(comps, "bus", None)              # 事件总线（执行器结果回调）
+        self.executors = getattr(comps, "executors", None)  # 执行器注册表
+        self._pending_agents: Dict[str, Dict[str, Any]] = {}  # task_id -> 挂起执行任务
+        self._agent_event_subs: List[Any] = []                # EXEC 事件订阅句柄
 
     def register_node(self, name: str, handler) -> None:
         """注册自定义节点处理器（M1 插件化节点入口）"""
@@ -182,17 +191,18 @@ class WorkflowEngine:
         return self.status(inst["id"])
 
     async def sweep_timeouts(self) -> Dict[str, List[str]]:
-        """审批超时扫描（§8.2.2，M1 任务 1.4）——由 CLI/API/定时器周期触发
+        """审批超时扫描（§8.2.2，M1 任务 1.4）+ 执行器 SLA 超时补偿（M21 任务 21.1）
+        ——由 CLI/API/定时器周期触发
 
         low    → 超时自动通过（审计 TIMEOUT 语义，禁止高风险自动通过的规则由
                  timeout_action_for 保证：high 只会 auto_reject）
         medium → 保持挂起 + 升级链前移 + 顺延窗口 + 通知
         high   → 超时自动驳回（宁慢勿错）
+        agent  → 执行器挂起任务 sla_hours 到期 → 任务失败 + 实例失败
         """
-        handled: Dict[str, List[str]] = {"auto_passed": [], "auto_rejected": [], "escalated": []}
-        if self.approvals is None:
-            return handled
-        for task in self.approvals.due_tasks():
+        handled: Dict[str, List[str]] = {"auto_passed": [], "auto_rejected": [],
+                                          "escalated": [], "agent_timed_out": []}
+        for task in (self.approvals.due_tasks() if self.approvals else []):
             action = timeout_action_for(task["risk"])
             inst = self._must_get(task["instance_id"])
             if inst["status"] in INSTANCE_TERMINAL:
@@ -247,6 +257,8 @@ class WorkflowEngine:
                     self._audit(inst, "approval.escalation_exhausted",
                                 after={"task": task["id"], "note": "升级链已耗尽，保持挂起提醒"})
                     handled["escalated"].append(task["id"])
+        # M21：执行器挂起任务 SLA 超时补偿（sweep agent 挂起）
+        await self._sweep_agent_timeouts(handled)
         return handled
 
     async def cancel(
@@ -295,13 +307,17 @@ class WorkflowEngine:
 
     def _validate_definition(self, definition: WorkflowDef) -> None:
         """定义期静态校验：并行组 write_keys 互斥（§8.1.1 写冲突校验）、
-        approval 节点不得入并行组"""
+        approval / executor 节点不得入并行组"""
         groups: Dict[str, List[NodeSpec]] = {}
         for spec in definition.nodes:
             if spec.parallel_group:
                 if spec.node_type == "approval":
                     raise WorkflowError(
                         f"工作流 {definition.code}: 审批节点 {spec.node_code} 不可加入并行组"
+                    )
+                if spec.executor:
+                    raise WorkflowError(
+                        f"工作流 {definition.code}: 执行器节点 {spec.node_code} 不可加入并行组"
                     )
                 groups.setdefault(spec.parallel_group, []).append(spec)
         for group, members in groups.items():
@@ -347,12 +363,18 @@ class WorkflowEngine:
                 self._merge_blackboard(inst, [(spec, step.get("output") or {})])
                 continue
             if step["status"] == STEP_WAITING:
-                # 恢复执行时遇到等待审批的步骤 → 实例回到等待审批
-                self.repo.update_status(instance_id, INSTANCE_WAITING_APPROVAL,
-                                        current_step=spec.node_code)
+                # 恢复执行时遇到等待的步骤 → 实例回到对应等待状态
+                if spec.executor:
+                    self.repo.update_status(instance_id, INSTANCE_WAITING_AGENT,
+                                            current_step=spec.node_code)
+                else:
+                    self.repo.update_status(instance_id, INSTANCE_WAITING_APPROVAL,
+                                            current_step=spec.node_code)
                 return self.status(instance_id)
             if spec.node_type == "approval":
                 return self._enter_approval(inst, spec, step)
+            if spec.executor:
+                return await self._enter_executor(inst, spec, step)
             kind, payload = await self._run_step(inst, spec, step, prev_output)
             if kind == "crash":
                 return self.status(instance_id)   # 悬挂在崩溃点，等 resume()
@@ -490,6 +512,184 @@ class WorkflowEngine:
         self._audit(inst, "workflow.rejected", actor_type=ACTOR_HUMAN, actor_id=decided_by,
                     after={"step": waiting["node_code"], "reason": reason})
         return await self.cancel(inst["id"], actor=decided_by, reason=reason or "审批驳回")
+
+    # ── M21 执行器 SPI（executor SPI，任务 21.1）──
+
+    def _tenant_code(self, inst: Dict[str, Any]) -> str:
+        """从实例租户 id 反查租户码（执行器注册表租户白名单校验用）"""
+        if self.tenants is None:
+            return "dev"
+        for row in self.tenants.list_all():
+            if row["id"] == inst["tenant_id"]:
+                return row["code"]
+        return "dev"
+
+    async def _ensure_agent_subscriptions(self) -> None:
+        """幂等订阅执行器事件（EXEC.RESULT/FAILED/TIMEOUT），结果回调续跑"""
+        if self.bus is None or self._agent_event_subs:
+            return
+        handlers = {
+            EventTypes.EXEC_DISPATCHED: self._on_exec_dispatched,
+            EventTypes.EXEC_RESULT: self._on_exec_result,
+            EventTypes.EXEC_FAILED: self._on_exec_failed,
+            EventTypes.EXEC_TIMEOUT: self._on_exec_timeout,
+        }
+        for event_type, handler in handlers.items():
+            try:
+                sub = await self.bus.subscribe(event_type, handler)
+                self._agent_event_subs.append(sub)
+            except Exception as exc:  # 订阅失败不影响派发主流程
+                logger.warning("执行器事件订阅失败 %s: %s", event_type, exc)
+
+    async def _on_exec_dispatched(self, event: Event) -> None:
+        """EXEC.DISPATCHED（引擎自身发布）：信息性事件，仅留日志"""
+        payload = event.payload or {}
+        logger.info("执行器已派发 task=%s instance=%s",
+                    payload.get("task_id"), payload.get("instance_id"))
+
+    async def _on_exec_result(self, event: Event) -> None:
+        """EXEC.RESULT → 续跑对应实例"""
+        payload = event.payload or {}
+        await self.resume_agent(
+            payload.get("instance_id"), payload.get("task_id"),
+            result=payload.get("result") or {})
+
+    async def _on_exec_failed(self, event: Event) -> None:
+        """EXEC.FAILED → 对应步骤失败 + 实例失败"""
+        payload = event.payload or {}
+        await self.resume_agent(
+            payload.get("instance_id"), payload.get("task_id"),
+            error=payload.get("error") or {"type": "executor",
+                                           "message": "执行器返回失败"})
+
+    async def _on_exec_timeout(self, event: Event) -> None:
+        """EXEC.TIMEOUT（执行器侧报告超时）→ 对应步骤失败 + 实例失败"""
+        payload = event.payload or {}
+        await self.resume_agent(
+            payload.get("instance_id"), payload.get("task_id"),
+            error={"type": "timeout", "task_id": payload.get("task_id"),
+                   "message": payload.get("error") or "执行器任务超时"})
+
+    async def _enter_executor(self, inst: Dict[str, Any], spec: NodeSpec,
+                              step: Dict[str, Any]) -> Dict[str, Any]:
+        """executor 节点（M21 任务 21.1）：步骤 WAITING + 外部派发 + 实例 WAITING_AGENT
+
+        派发为异步受理：执行器受理后实例挂起，等待 EXEC.RESULT/FAILED/TIMEOUT
+        事件（或 resume_agent 直调）续跑；sla_hours 超时由 sweep_timeouts 补偿。
+        """
+        if self.executors is None:
+            return self._fail(inst, step, spec,
+                              RuntimeError("执行器注册表未注入（comps.executors）"))
+        await self._ensure_agent_subscriptions()
+        self.repo.start_step(step["id"])
+        self.repo.finish_step(step["id"], STEP_WAITING)
+        tenant_code = self._tenant_code(inst)
+        payload = {
+            "task": spec.task or {},
+            "instance_id": inst["id"],
+            "node_code": spec.node_code,
+            "workflow": inst["workflow_code"],
+        }
+        try:
+            dispatch: DispatchResult = await self.executors.dispatch(
+                spec.executor, tenant_code,
+                instance_id=inst["id"], step_id=step["id"],
+                node_code=spec.node_code, payload=payload,
+                context={"task": spec.task or {}, "sla_hours": spec.sla_hours,
+                         "blackboard": self._load_blackboard(inst)},
+            )
+        except ExecutorError as exc:
+            return self._fail(inst, step, spec, exc)
+        self._pending_agents[dispatch.task_id] = {
+            "instance_id": inst["id"],
+            "step_id": step["id"],
+            "node_code": spec.node_code,
+            "spec": spec,
+            "sla_hours": dispatch.sla_hours or spec.sla_hours,
+            "dispatched_at_ts": time.time(),
+        }
+        if self.bus is not None:
+            try:
+                await self.bus.publish(Event(
+                    id=f"exec-dispatched-{dispatch.task_id}",
+                    type=EventTypes.EXEC_DISPATCHED,
+                    tenant_id=inst["tenant_id"],
+                    payload={"task_id": dispatch.task_id,
+                             "instance_id": inst["id"],
+                             "executor": dispatch.executor,
+                             "node_code": spec.node_code},
+                ))
+            except Exception as exc:  # 事件发布是旁路，失败仅告警
+                logger.warning("EXEC.DISPATCHED 发布失败: %s", exc)
+        payload_out = {"step": spec.node_code, "executor": dispatch.executor,
+                       "task_id": dispatch.task_id, "sla_hours": dispatch.sla_hours}
+        self._audit(inst, "workflow.waiting_agent", after=payload_out)
+        self._notify("agent.dispatched", inst,
+                     f"执行器派发：{inst['workflow_code']}/{spec.node_code}"
+                     f" → {dispatch.executor}（{dispatch.task_id}）", payload_out)
+        self.repo.update_status(inst["id"], INSTANCE_WAITING_AGENT, current_step=spec.node_code)
+        return self.status(inst["id"])
+
+    async def resume_agent(self, instance_id: str, task_id: str,
+                           result: Optional[Dict[str, Any]] = None,
+                           error: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """执行器结果续跑（M21 任务 21.1）：成功 → 步骤 SUCCEEDED + 实例续跑；
+        失败/超时 → 步骤 FAILED + 实例 FAILED。幂等：未知/已处理任务直接返回现状。
+        """
+        rec = self._pending_agents.get(task_id)
+        if rec is None:
+            return self.status(instance_id)
+        inst = self._must_get(instance_id)
+        if error is not None:
+            err = dict(error) or {"type": "executor",
+                                  "message": "执行器任务失败", "task_id": task_id}
+            self.repo.finish_step(rec["step_id"], "FAILED", error=err)
+            self.repo.update_status(instance_id, "FAILED", error=err)
+            self._audit(inst, "workflow.agent_failed",
+                        after={"step": rec["node_code"], "task": task_id, "error": err})
+            self._audit(inst, "workflow.failed", after=err)
+            self._notify("agent.failed", inst,
+                         f"执行器任务失败：{rec['node_code']}（{task_id}）", err)
+            logger.error("执行器任务失败 instance=%s task=%s step=%s: %s",
+                         instance_id, task_id, rec["node_code"], err)
+            self._pending_agents.pop(task_id, None)
+            return self.status(instance_id)
+        # 成功：步骤 SUCCEEDED + 结果按 write_keys 合并黑板 + 实例续跑
+        self.repo.finish_step(rec["step_id"], STEP_SUCCEEDED, output={
+            "task_id": task_id, "result": result or {},
+        })
+        self._audit(inst, "workflow.agent_completed",
+                    after={"step": rec["node_code"], "task": task_id, "result": result})
+        self._merge_blackboard(inst, [(rec["spec"], result or {})])
+        self._pending_agents.pop(task_id, None)
+        definition = get_workflow(inst["workflow_code"])
+        self.repo.update_status(instance_id, INSTANCE_RUNNING)
+        fresh = self._must_get(instance_id)
+        return await self._execute(fresh, definition)
+
+    async def _sweep_agent_timeouts(self, handled: Dict[str, List[str]]) -> None:
+        """执行器挂起任务 SLA 超时补偿（M21）：sla_hours 到期仍未恢复
+        → 任务失败 + 实例失败（先通知人工兜底）"""
+        if not self._pending_agents:
+            return
+        now = time.time()
+        for task_id, rec in list(self._pending_agents.items()):
+            sla = rec.get("sla_hours")
+            dispatched_at = rec.get("dispatched_at_ts")
+            if not sla or dispatched_at is None:
+                continue
+            if now - dispatched_at < sla * 3600:
+                continue
+            handled["agent_timed_out"].append(task_id)
+            inst = self._must_get(rec["instance_id"])
+            self._notify("agent.timeout", inst,
+                         f"执行器任务超时：{rec['node_code']}（{task_id}）SLA {sla}h",
+                         {"task": task_id, "node": rec["node_code"], "sla_hours": sla})
+            await self.resume_agent(
+                rec["instance_id"], task_id,
+                error={"type": "timeout", "task_id": task_id,
+                       "message": f"执行器任务 {task_id} 超过 SLA {sla}h 未恢复"},
+            )
 
     def _load_blackboard(self, inst: Dict[str, Any]) -> Dict[str, Any]:
         """读取实例黑板（黑板数据持久化于 context.blackboard）"""

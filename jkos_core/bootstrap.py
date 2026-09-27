@@ -17,9 +17,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from jkos_core.audit import AuditLogger
+from jkos_core.bus import EventBus, NatsEventBus
 from jkos_core.auth.dependencies import AuthConfig, JWTManager, configure_auth
 from jkos_core.cache.manager import CacheManager, MemoryCache
 from jkos_core.db import ApprovalTaskRepo, Database, DatabaseConfig, LlmUsageRepo, ResourceRepo, TenantRepo, WorkflowRepo
+from jkos_core.executors import ExecutorRegistry, MockExecutor
+from jkos_core.executors import ExecutorRegistry, MockExecutor
 from jkos_core.db.tenant_schema import (
     IsolationLevel,
     TenantIsolationConfig,
@@ -54,6 +57,8 @@ class AppComponents:
     tools: Optional[ToolRegistry] = None  # M13 工具注册表
     harness: Optional["HarnessGateway"] = None  # M16 智能中枢网关（默认关闭）
     tenant_schemas: Optional[TenantSchemaManager] = None  # M18.2 L2 物理隔离（默认关闭）
+    bus: Optional[EventBus] = None  # M21 事件总线（执行器结果回调）
+    executors: Optional[ExecutorRegistry] = None  # M21 执行器注册表
     _engines: Dict[str, Any] = field(default_factory=dict, repr=False)  # 租户码 -> 租户专属引擎
 
     def close(self) -> None:
@@ -103,6 +108,8 @@ class AppComponents:
                 llm=self.llm,
                 jwt=self.jwt,
                 notify=self.notify,
+                bus=self.bus,
+                executors=self.executors,
             )
             engine = WorkflowEngine(tenant_comps)
             register_tenant_workflows(engine)
@@ -221,6 +228,12 @@ def build_components(db_path: Optional[str] = None, init_auth: bool = True) -> A
         logger.info("多租户隔离已启用：%s（已接入 %d 个租户）",
                     isolation_config.describe(), wired)
 
+    # M21: 事件总线（NATS，无 NATS 服务器时自动降级内嵌内存模式）
+    bus = NatsEventBus()
+    # M21: 执行器注册表（内置 mock 执行器，供演示与测试）
+    executors = ExecutorRegistry()
+    executors.register("mock", MockExecutor())
+
     return AppComponents(
         db=db, tenants=TenantRepo(db), workflows=WorkflowRepo(db),
         audit=audit, llm=llm, jwt=jwt_manager,
@@ -232,4 +245,6 @@ def build_components(db_path: Optional[str] = None, init_auth: bool = True) -> A
         tools=tools,
         harness=harness,
         tenant_schemas=tenant_schemas,
+        bus=bus,
+        executors=executors,
     )
